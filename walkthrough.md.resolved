@@ -1,0 +1,106 @@
+# TRIBE Specification Overhaul — Walkthrough
+
+## Summary
+Completely rewrote `tribe_specification.md` to address all 25+ architectural issues raised. The document grew from **387 lines → 580+ lines** with 5 new database collections, 3 new workflow sections, a full tournament architecture, and a premium theme redesign.
+
+---
+
+## Changes by Category
+
+### 🗄️ Schema Extraction (Issues #1, #2, #3)
+| Problem | Fix |
+|---|---|
+| `chatHistory` unbounded array in Lobby | Extracted to **Messages** collection with `{ lobbyId, createdAt }` index |
+| `availableTimeSlots` unbounded array in Venue | Extracted to **TimeSlots** collection with `{ venueId, pitchName, startTime, status }` index |
+| `roster`/`waitlist` embedded in Lobby | Extracted to **JoinRequests** collection. Lobby now only has lean `confirmedPlayerIds` array (bounded by match size) |
+
+### ⚡ Concurrency & Race Conditions (Issue #5)
+- All slot modifications use `findOneAndUpdate` with `{ openSlots: { $gt: 0 } }` atomic guard
+- Documented in Section 2.4, 4.1, and 4.5
+- `openSlots` can be validated against `totalSlots - confirmedPlayerIds.length` for drift detection
+
+### 🕐 Lobby Lifecycle (Issue #6)
+- Added `expiresAt` field to Lobby schema (computed as `dateTime + 2 hours`)
+- New **Section 4.6** documents BullMQ recurring job for auto-transitioning expired lobbies
+- Added `COMPLETED` and `EXPIRED` to status enum
+
+### 👤 User Model (Issues #10, #18)
+- `role: "String"` → `roles: ["String"]` array. A venue owner can also play matches
+- Added `notificationPreferences` object with granular per-channel, per-type toggles
+- Added `avatarUrl` for S3/Cloudinary profile photos
+- Added `location` with 2dsphere index for Ringer proximity queries
+
+### 💰 Revenue Cleanup (Issue #4)
+- Removed all "revenue generation" references from analytics/admin dashboard
+- `hourlyRate` stays but explicitly labeled "informational only, display purposes"
+- Added clear statement: "All actual payments are handled entirely offline"
+
+### 🔧 Infrastructure (Issues #7, #9)
+- **Socket.io scaling:** Documented `@socket.io/redis-adapter` with Redis pub/sub, sticky sessions via NGINX `ip_hash`
+- **Waitlist timers:** Documented BullMQ for persistent delayed jobs. No `setTimeout` used anywhere
+- Added BullMQ to tech stack (Section 2.1)
+
+### ✅ Validation (Issues #11, #15, #28, #29)
+- **Sport validation:** Added `sportConfig` map with actual code example in Section 9
+- **Duplicate prevention:** Unique compound index `{ lobbyId, userId }` on JoinRequests
+- **Rate limiting:** Concrete limits defined (10/min auth, 5/min joins, 3/hr lobby creation, etc.)
+- **Timezone:** All dates stored UTC. Explicit `timezone` field on lobbies, time slots, challenges, tournaments
+
+### 🔄 Missing Workflows (Issues #16, #17)
+- **New Section 4.7:** Cancellation & Dropout — `APPROVED → DROPPED_OUT` transition, waitlist cascade, ringer trigger
+- **New Section 4.8:** Venue Booking Cancellation — 24-hour restriction, slot status revert, venue notification
+- Added `PATCH /request/:id/dropout`, `PATCH /request/:id/cancel`, `DELETE /venues/:id/bookings/:slotId`
+
+### 🏆 Tournament System (Issue #12)
+- **New Section 10:** Full tournament architecture
+- Supports 4 formats: Single Elimination, Double Elimination, Round Robin, Group Stage + Knockout
+- Schema-less `bracket` field for format flexibility
+- Tournament matches reuse existing Lobby infrastructure
+- Dedicated pages: `/tournaments` and `/tournament/:id`
+- API: `GET/POST /tournaments`, `POST /:id/register`, `PATCH /:id/bracket`
+
+### ⚔️ Squad vs. Squad (Issue #13)
+- **New Section 4.3:** Complete challenge workflow
+- New **Challenges** collection and API (`/api/challenges`)
+- Challenge → Accept → Auto-creates Lobby with both squad rosters pre-populated
+- Public browsing with optional private challenges
+- Auto-expiry via BullMQ/TTL
+
+### 🔍 Squad Discovery (Issue #19)
+- Added `GET /api/squads` with sport/location filters
+- New **Squad Discovery** page at `/squads`
+- Squad collection gets `location` with 2dsphere index and `sport` field
+
+### 🏟️ Venue Flexibility (User request)
+- `pitches.sport: "String"` → `pitches.sports: ["String"]` — each pitch declares which sports it supports
+- Added detailed note explaining multi-sport pitches (e.g., Multi-Court → `["Basketball", "Volleyball"]`)
+- Lobby creation filters venue pitches by selected sport
+- Time slots managed per-pitch independently
+
+### 📷 File Storage (Issue #27)
+- Added AWS S3/Cloudinary to tech stack
+- `avatarUrl` on User, `logoUrl` on Squad, `photos` array on Venue
+- Presigned URLs for secure client uploads, Sharp.js for thumbnails
+
+### 🎨 Theme Overhaul
+Replaced the neon/dark theme with **"Warm Precision"** — a Linear/Stripe/Vercel-inspired design system:
+- Warm off-whites (`#FAF9F7`) and atmospheric charcoal (`#1A1A1A`) — never pure black/white
+- **Burnt Coral** (`#E8614D`) accent used sparingly for CTAs
+- **Teal** (`#2A9D8F`) for success states
+- **Outfit** + **Inter** + **JetBrains Mono** typography system
+- Bento-box cards with thin borders and subtle shadows
+- Glassmorphism reserved for modals only
+- Skeleton loading screens instead of spinners
+- First-class dark mode with smooth crossfade transitions
+
+### 🚫 Removed
+- `skillLevel` / `skillsRequired` — removed from lobby schema, user profile, feed filters, and lobby creation
+- All "revenue generation" language from analytics and admin dashboard
+- Neon green / electric blue color references
+
+### ➕ Added (Beyond Issues)
+- **Section 11:** Future Considerations (i18n, payments, mobile app, AI recommendations)
+- `location` field + 2dsphere index on User schema for Ringer geoproximity
+- Challenge socket events (`challenge_posted`, `challenge_accepted`)
+- `player_dropped` and `booking_cancelled` socket events
+- Lobby scope clarification paragraph in schema section

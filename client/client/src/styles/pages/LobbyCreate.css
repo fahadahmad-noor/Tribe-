@@ -1,0 +1,186 @@
+.lobby-create-page { padding-top: var(--space-6); }
+
+.create-container {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+/* Step Progress */
+.step-progress {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--space-8);
+  position: relative;
+}
+
+.step-progress::before {
+  content: '';
+  position: absolute;
+  top: 14px;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: var(--border-default);
+  z-index: 0;
+}
+
+.step-dot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  position: relative;
+  z-index: 1;
+}
+
+.step-num {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--bg-surface);
+  border: 2px solid var(--border-strong);
+  color: var(--text-muted);
+  transition: all var(--transition-default);
+}
+
+.step-dot.active .step-num {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: #fff;
+}
+
+.step-dot.done .step-num {
+  background: var(--accent-secondary);
+  border-color: var(--accent-secondary);
+  color: #fff;
+}
+
+.step-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.step-dot.active .step-label { color: var(--text-primary); }
+
+/* Create Step */
+.create-step { animation: slideUp 300ms ease; }
+.create-step h2 { margin-bottom: var(--space-2); }
+
+.create-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.step-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-8);
+}
+
+/* Sport Grid */
+.sport-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+}
+
+.sport-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--bg-surface);
+  border: 2px solid var(--border-default);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-default);
+  font-family: var(--font-body);
+}
+
+.sport-option:hover {
+  border-color: var(--accent-primary);
+  transform: translateY(-2px);
+}
+
+.sport-option.selected {
+  border-color: var(--accent-primary);
+  background: var(--accent-primary-subtle);
+}
+
+.sport-option-emoji { font-size: 32px; }
+.sport-option-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+
+/* Format Section */
+.format-section h3 { margin-bottom: var(--space-3); }
+
+.format-variable {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.range-input {
+  flex: 1;
+  accent-color: var(--accent-primary);
+  height: 6px;
+}
+
+.format-display {
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--accent-primary);
+  min-width: 100px;
+  text-align: center;
+}
+
+.format-options {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.format-btn {
+  padding: var(--space-2) var(--space-4);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  background: var(--bg-surface);
+  border: 2px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-default);
+  color: var(--text-primary);
+}
+
+.format-btn:hover { border-color: var(--accent-primary); }
+.format-btn.active { background: var(--accent-primary); color: #fff; border-color: var(--accent-primary); }
+
+/* Review Card */
+.review-card { display: flex; flex-direction: column; gap: var(--space-3); }
+
+.review-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 14px;
+}
+
+.review-row:last-child { border-bottom: none; }
+.review-label { color: var(--text-muted); font-weight: 500; }
+
+@media (max-width: 480px) {
+  .sport-grid { grid-template-columns: repeat(2, 1fr); }
+}
