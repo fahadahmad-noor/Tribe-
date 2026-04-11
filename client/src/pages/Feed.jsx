@@ -12,14 +12,39 @@ const Feed = () => {
   const [lobbies, setLobbies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sportFilter, setSportFilter] = useState('All');
+  
+  // Location filters
+  const [city, setCity] = useState('');
+  const [country, setCountry] = useState('');
+  const [radiusKm, setRadiusKm] = useState('25');
+  const [coords, setCoords] = useState(null);
+  const [locating, setLocating] = useState(false);
+  const [availableCities, setAvailableCities] = useState([]);
+  const [availableCountries, setAvailableCountries] = useState([]);
+
   const [nextCursor, setNextCursor] = useState(null);
   const [hasMore, setHasMore] = useState(false);
+
+  // Fetch available locations for dropdowns
+  useEffect(() => {
+    api.get('/lobbies/locations').then(res => {
+      setAvailableCities(res.data.cities || []);
+      setAvailableCountries(res.data.countries || []);
+    }).catch(() => {});
+  }, []);
 
   const fetchLobbies = useCallback(async (cursor = null) => {
     try {
       setLoading(true);
       const params = { limit: 20 };
       if (sportFilter !== 'All') params.sport = sportFilter;
+      if (city) params.city = city;
+      if (country) params.country = country;
+      if (coords) {
+        params.lng = coords.lng;
+        params.lat = coords.lat;
+        params.radiusKm = radiusKm === 'All' ? '100000' : radiusKm;
+      }
       if (cursor) params.cursor = cursor;
 
       const res = await api.get('/lobbies', { params });
@@ -35,9 +60,24 @@ const Feed = () => {
     } finally {
       setLoading(false);
     }
-  }, [sportFilter]);
+  }, [sportFilter, city, country, radiusKm, coords]);
 
   useEffect(() => { fetchLobbies(); }, [fetchLobbies]);
+
+  const handleNearMe = () => {
+    if (!navigator.geolocation) return alert('Geolocation not supported');
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setLocating(false);
+      },
+      () => {
+        alert('Could not get location. Ensure permissions are granted.');
+        setLocating(false);
+      }
+    );
+  };
 
   // Real-time updates
   useEffect(() => {
@@ -75,6 +115,29 @@ const Feed = () => {
               {sport}
             </button>
           ))}
+        </div>
+
+        {/* Location Filters */}
+        <div className="location-filter-bar">
+          <button className={`btn btn-sm ${coords ? 'btn-primary' : 'btn-outline'}`} onClick={coords ? () => setCoords(null) : handleNearMe} disabled={locating}>
+            {locating ? '⏳ Locating...' : coords ? '✖ Clear Location' : '📍 Near Me'}
+          </button>
+          {coords && (
+            <select className="input input-sm radius-select" value={radiusKm} onChange={e => setRadiusKm(e.target.value)}>
+              <option value="10">Within 10 km</option>
+              <option value="25">Within 25 km</option>
+              <option value="50">Within 50 km</option>
+              <option value="All">Any Distance</option>
+            </select>
+          )}
+          <select className="input input-sm" value={country} onChange={e => { setCountry(e.target.value); setCity(''); }} style={{minWidth: 150}}>
+            <option value="">All Countries</option>
+            {availableCountries.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select className="input input-sm" value={city} onChange={e => setCity(e.target.value)} style={{minWidth: 150}}>
+            <option value="">All Cities</option>
+            {availableCities.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
         </div>
 
         {/* Lobby Grid */}

@@ -82,7 +82,8 @@ const Profile = () => {
               <>
                 <h1>{profile.name}</h1>
                 <p className="text-secondary">{profile.email}</p>
-                {profile.ringerMode && <span className="badge badge-open">🚨 Ringer Mode Active</span>}
+                {profile.whatsappNumber && <p className="text-secondary">📱 {profile.whatsappNumber}</p>}
+                {profile.ringerMode && <span className="badge badge-open mt-2 d-inline-block">🚨 Ringer Mode Active</span>}
                 <div className="profile-prefs mt-3">{profile.preferences?.map(s => <span key={s} className="badge badge-sport">{s}</span>)}</div>
                 {isMe && <button className="btn btn-outline btn-sm mt-4" onClick={() => setEditing(true)}>Edit Profile</button>}
               </>

@@ -14,14 +14,17 @@ import LobbyDetail from './pages/LobbyDetail';
 import Profile from './pages/Profile';
 import SquadDiscovery from './pages/SquadDiscovery';
 import SquadProfile from './pages/SquadProfile';
+import SquadCreate from './pages/SquadCreate';
 import VenueDirectory from './pages/VenueDirectory';
 import VenueProfile from './pages/VenueProfile';
+import VenueApply from './pages/VenueApply';
 import VenueDashboard from './pages/VenueDashboard';
 import TournamentDirectory from './pages/TournamentDirectory';
 import TournamentDetail from './pages/TournamentDetail';
 import Challenges from './pages/Challenges';
 import AdminDashboard from './pages/AdminDashboard';
 import NotFound from './pages/NotFound';
+import Messages from './pages/Messages';
 
 // Protected route wrapper
 const ProtectedRoute = ({ children, roles }) => {
@@ -55,12 +58,15 @@ function App() {
 
                 {/* Authenticated */}
                 <Route path="/feed" element={<ProtectedRoute><Feed /></ProtectedRoute>} />
+                <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
                 <Route path="/lobby/create" element={<ProtectedRoute><LobbyCreate /></ProtectedRoute>} />
                 <Route path="/lobby/:id" element={<ProtectedRoute><LobbyDetail /></ProtectedRoute>} />
                 <Route path="/profile/:id" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                 <Route path="/squads" element={<ProtectedRoute><SquadDiscovery /></ProtectedRoute>} />
+                <Route path="/squads/create" element={<ProtectedRoute><SquadCreate /></ProtectedRoute>} />
                 <Route path="/squad/:id" element={<ProtectedRoute><SquadProfile /></ProtectedRoute>} />
                 <Route path="/venues" element={<ProtectedRoute><VenueDirectory /></ProtectedRoute>} />
+                <Route path="/venues/apply" element={<ProtectedRoute><VenueApply /></ProtectedRoute>} />
                 <Route path="/venue/:id" element={<ProtectedRoute><VenueProfile /></ProtectedRoute>} />
                 <Route path="/venue/dashboard" element={<ProtectedRoute roles={['venue_owner']}><VenueDashboard /></ProtectedRoute>} />
                 <Route path="/tournaments" element={<ProtectedRoute><TournamentDirectory /></ProtectedRoute>} />

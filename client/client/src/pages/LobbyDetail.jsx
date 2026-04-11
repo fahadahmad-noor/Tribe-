@@ -1,22 +1,21 @@
-import { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import api from '../api/axios';
+import MapEmbed from '../components/ui/MapEmbed';
 import '../styles/pages/LobbyDetail.css';
 
 const LobbyDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { socket } = useSocket();
   const [lobby, setLobby] = useState(null);
   const [requests, setRequests] = useState([]);
-  const [messages, setMessages] = useState([]);
-  const [newMsg, setNewMsg] = useState('');
   const [myRequest, setMyRequest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('info');
-  const chatEndRef = useRef(null);
 
   const isOrganizer = lobby?.organizerId?._id === user?._id;
   const isConfirmed = lobby?.confirmedPlayerIds?.some(p => (p._id || p) === user?._id);
@@ -25,12 +24,10 @@ const LobbyDetail = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [lobbyRes, msgRes] = await Promise.all([
+        const [lobbyRes] = await Promise.all([
           api.get(`/lobbies/${id}`),
-          api.get(`/lobbies/${id}/messages?limit=50`),
         ]);
         setLobby(lobbyRes.data.lobby);
-        setMessages(msgRes.data.messages);
 
         // Get requests if organizer
         if (lobbyRes.data.lobby.organizerId?._id === user?._id) {
@@ -63,7 +60,6 @@ const LobbyDetail = () => {
     });
     socket.on('lobby_locked', () => setLobby(prev => prev ? { ...prev, status: 'LOCKED' } : prev));
     socket.on('lobby_cancelled', () => setLobby(prev => prev ? { ...prev, status: 'CANCELLED' } : prev));
-    socket.on('new_message', (msg) => setMessages(prev => [...prev, msg]));
     socket.on('request_received', (req) => setRequests(prev => [...prev, req]));
     socket.on('player_dropped', (data) => {
       setLobby(prev => prev ? { ...prev, openSlots: data.openSlots, status: data.status } : prev);
@@ -74,23 +70,10 @@ const LobbyDetail = () => {
       socket.off('roster_updated');
       socket.off('lobby_locked');
       socket.off('lobby_cancelled');
-      socket.off('new_message');
       socket.off('request_received');
       socket.off('player_dropped');
     };
   }, [socket, id]);
-
-  // Auto-scroll chat
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  const sendMessage = (e) => {
-    e.preventDefault();
-    if (!newMsg.trim() || !socket) return;
-    socket.emit('send_message', { lobbyId: id, message: newMsg.trim() });
-    setNewMsg('');
-  };
 
   const handleJoinRequest = async () => {
     try {
@@ -168,6 +151,9 @@ const LobbyDetail = () => {
                 <h1>{lobby.sport} — {lobby.matchFormat}-a-side</h1>
                 <p className="text-secondary mt-1">📅 {time}</p>
                 <p className="text-secondary">📍 {lobby.location?.address || 'Location TBD'}</p>
+                {lobby.location?.coordinates && lobby.location.coordinates[0] !== 0 && (
+                  <MapEmbed coordinates={lobby.location.coordinates} address={lobby.location.address} />
+                )}
               </div>
               <div className={`slot-counter-lg ${lobby.openSlots <= 2 && lobby.openSlots > 0 ? 'urgent' : ''} ${lobby.openSlots === 0 ? 'full' : ''}`}>
                 <span className="slot-number">{lobby.openSlots}</span>
@@ -180,7 +166,6 @@ const LobbyDetail = () => {
             {/* Tabs */}
             <div className="detail-tabs">
               <button className={`tab-btn ${tab === 'info' ? 'active' : ''}`} onClick={() => setTab('info')}>Roster</button>
-              {(isConfirmed || isOrganizer) && <button className={`tab-btn ${tab === 'chat' ? 'active' : ''}`} onClick={() => setTab('chat')}>Chat</button>}
               {isOrganizer && <button className={`tab-btn ${tab === 'requests' ? 'active' : ''}`} onClick={() => setTab('requests')}>Requests ({requests.filter(r => r.status === 'PENDING').length})</button>}
             </div>
 
@@ -197,29 +182,6 @@ const LobbyDetail = () => {
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
-
-            {/* Chat Tab */}
-            {tab === 'chat' && (isConfirmed || isOrganizer) && (
-              <div className="chat-panel slide-up">
-                <div className="chat-messages">
-                  {messages.length === 0 && <p className="text-muted text-center p-4">No messages yet. Say hello! 👋</p>}
-                  {messages.map(msg => (
-                    <div key={msg._id} className={`chat-msg ${msg.userId?._id === user?._id ? 'own' : ''}`}>
-                      <div className="chat-msg-header">
-                        <span className="chat-author">{msg.userId?._id === user?._id ? 'You' : msg.userId?.name}</span>
-                        <span className="chat-time">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
-                      <p>{msg.message}</p>
-                    </div>
-                  ))}
-                  <div ref={chatEndRef} />
-                </div>
-                <form className="chat-input-form" onSubmit={sendMessage}>
-                  <input type="text" className="input" placeholder="Type a message..." value={newMsg} onChange={e => setNewMsg(e.target.value)} maxLength={2000} />
-                  <button type="submit" className="btn btn-primary" disabled={!newMsg.trim()}>Send</button>
-                </form>
               </div>
             )}
 
@@ -285,9 +247,14 @@ const LobbyDetail = () => {
                 {lobby.organizerId?.avatarUrl ? <img src={lobby.organizerId.avatarUrl} className="avatar avatar-lg" alt="" /> : <div className="avatar avatar-lg avatar-placeholder">{lobby.organizerId?.name?.[0]}</div>}
                 <div>
                   <p className="font-semibold">{lobby.organizerId?.name}</p>
-                  {isConfirmed && lobby.organizerId?.whatsappNumber && <p className="text-sm text-secondary">📱 {lobby.organizerId.whatsappNumber}</p>}
+                  {lobby.organizerId?.whatsappNumber && <p className="text-sm text-secondary">📱 {lobby.organizerId.whatsappNumber}</p>}
                 </div>
               </div>
+              {!isOrganizer && (
+                <button className="btn btn-outline btn-sm w-full mt-4" onClick={() => navigate(`/messages?user=${lobby.organizerId._id}`)}>
+                  ✉️ Message Organizer
+                </button>
+              )}
             </div>
           </div>
         </div>

@@ -49,7 +49,7 @@ const SquadDiscovery = () => {
                 </div>
                 <div className="flex justify-between text-sm text-muted">
                   <span>👥 {s.roster?.length || 0} members</span>
-                  <span>🏆 {s.stats?.wins || 0}W / {s.stats?.losses || 0}L</span>
+                  <span>📅 Created {new Date(s.createdAt).toLocaleDateString()}</span>
                 </div>
               </Link>
             ))}

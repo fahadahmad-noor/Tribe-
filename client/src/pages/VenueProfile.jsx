@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../api/axios';
+import MapEmbed from '../components/ui/MapEmbed';
 
 const VenueProfile = () => {
   const { id } = useParams();
@@ -20,6 +21,9 @@ const VenueProfile = () => {
         <div className="card card-body mb-6">
           <h1>{venue.name}</h1>
           <p className="text-secondary mt-1">📍 {venue.location?.address}</p>
+          {venue.location?.coordinates && venue.location.coordinates[0] !== 0 && (
+            <MapEmbed coordinates={venue.location.coordinates} address={venue.location.address} />
+          )}
           {venue.description && <p className="mt-3">{venue.description}</p>}
           <div className="flex flex-wrap gap-2 mt-4">
             {venue.sportsSupported?.map(s => <span key={s} className="badge badge-sport">{s}</span>)}

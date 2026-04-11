@@ -28,7 +28,10 @@ const LobbyCard = ({ lobby }) => {
           ) : (
             <div className="avatar avatar-sm avatar-placeholder">{lobby.organizerId?.name?.[0]}</div>
           )}
-          <span className="text-sm">{lobby.organizerId?.name}</span>
+          <span className="flex flex-col text-sm" style={{marginLeft: '0.25rem'}}>
+            <span style={{fontWeight: 500, lineHeight: 1.2}}>{lobby.organizerId?.name}</span>
+            {lobby.organizerId?.whatsappNumber && <span className="text-secondary" style={{fontSize: '11px', opacity: 0.8, lineHeight: 1}}>📱 {lobby.organizerId.whatsappNumber}</span>}
+          </span>
         </div>
         <div className={`slot-counter ${urgent ? 'urgent' : ''} ${lobby.openSlots === 0 ? 'full' : ''}`}>
           {lobby.openSlots}/{lobby.totalSlots} slots

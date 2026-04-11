@@ -25,7 +25,7 @@ const VenueDirectory = () => {
       <div className="container">
         <div className="flex justify-between items-start mb-6">
           <div><h1>Venues</h1><p className="text-secondary">Discover verified sports venues.</p></div>
-          <Link to="/venue/apply" className="btn btn-outline">Apply as Venue</Link>
+          <Link to="/venues/apply" className="btn btn-outline">Apply as Venue</Link>
         </div>
         <div className="flex gap-3 mb-6">
           <select className="select" style={{maxWidth:200}} value={sportFilter} onChange={e=>setSportFilter(e.target.value)}>

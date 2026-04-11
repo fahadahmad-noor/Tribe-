@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
+import MapPicker from '../components/ui/MapPicker';
 import '../styles/pages/VenueApply.css';
 
 const SPORTS = ['Football', 'Cricket', 'Basketball', 'Tennis', 'Padel', 'Volleyball', 'Badminton', 'Pickleball', 'TableTennis'];
@@ -15,6 +16,8 @@ const VenueApply = () => {
     name: '',
     address: '',
     coordinates: [0, 0],
+    city: '',
+    country: '',
     sportsSupported: [],
     amenities: [],
     pitches: [{ name: '', sports: [], hourlyRate: 0 }],
@@ -73,7 +76,7 @@ const VenueApply = () => {
     try {
       const payload = {
         name: form.name,
-        location: { coordinates: form.coordinates, address: form.address },
+        location: { coordinates: form.coordinates, address: form.address, city: form.city, country: form.country },
         sportsSupported: form.sportsSupported,
         amenities: form.amenities,
         pitches: form.pitches.filter(p => p.name).map(p => ({ ...p, isActive: true })),
@@ -116,18 +119,14 @@ const VenueApply = () => {
                   <input type="text" className="input" placeholder="e.g. Sports City Arena" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
                 </div>
                 <div className="input-group">
-                  <label className="input-label">Address</label>
-                  <input type="text" className="input" placeholder="Full address" value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} required />
-                </div>
-                <div className="grid grid-2 gap-4">
-                  <div className="input-group">
-                    <label className="input-label">Longitude</label>
-                    <input type="number" step="any" className="input" value={form.coordinates[0]} onChange={e => setForm({ ...form, coordinates: [parseFloat(e.target.value) || 0, form.coordinates[1]] })} />
-                  </div>
-                  <div className="input-group">
-                    <label className="input-label">Latitude</label>
-                    <input type="number" step="any" className="input" value={form.coordinates[1]} onChange={e => setForm({ ...form, coordinates: [form.coordinates[0], parseFloat(e.target.value) || 0] })} />
-                  </div>
+                  <label className="input-label">Location</label>
+                  <MapPicker
+                    initialCoords={form.coordinates}
+                    initialAddress={form.address}
+                    onLocationSelect={({ coordinates, address, city, country }) => {
+                      setForm(prev => ({ ...prev, coordinates, address, city: city || prev.city, country: country || prev.country }));
+                    }}
+                  />
                 </div>
                 <div className="input-group">
                   <label className="input-label">Description</label>

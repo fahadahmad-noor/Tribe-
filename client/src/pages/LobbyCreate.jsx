@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
+import MapPicker from '../components/ui/MapPicker';
 import '../styles/pages/LobbyCreate.css';
 
 const SPORTS = ['Football', 'Cricket', 'Basketball', 'Tennis', 'Padel', 'Volleyball', 'Badminton', 'Pickleball', 'TableTennis'];
@@ -30,6 +31,8 @@ const LobbyCreate = () => {
     dateTime: '',
     address: '',
     coordinates: [0, 0],
+    city: '',
+    country: '',
     totalSlots: 1,
     description: '',
   });
@@ -49,7 +52,7 @@ const LobbyCreate = () => {
       const res = await api.post('/lobbies', {
         sport: form.sport,
         matchFormat: form.matchFormat,
-        location: { coordinates: form.coordinates, address: form.address },
+        location: { coordinates: form.coordinates, address: form.address, city: form.city, country: form.country },
         dateTime: new Date(form.dateTime).toISOString(),
         totalSlots: form.totalSlots,
         description: form.description,
@@ -150,23 +153,15 @@ const LobbyCreate = () => {
           {step === 3 && (
             <div className="create-step slide-up">
               <h2>Where are you playing?</h2>
-              <p className="text-secondary mb-6">Enter the venue or location for your match.</p>
+              <p className="text-secondary mb-6">Search for a venue or click on the map to set the location.</p>
               <div className="create-form">
-                <div className="input-group">
-                  <label className="input-label">Venue / Address</label>
-                  <input type="text" className="input" placeholder="e.g. Sports City Arena, Dubai" value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} />
-                </div>
-                <div className="grid grid-2 gap-4">
-                  <div className="input-group">
-                    <label className="input-label">Longitude</label>
-                    <input type="number" step="any" className="input" value={form.coordinates[0]} onChange={e => setForm({ ...form, coordinates: [parseFloat(e.target.value) || 0, form.coordinates[1]] })} />
-                  </div>
-                  <div className="input-group">
-                    <label className="input-label">Latitude</label>
-                    <input type="number" step="any" className="input" value={form.coordinates[1]} onChange={e => setForm({ ...form, coordinates: [form.coordinates[0], parseFloat(e.target.value) || 0] })} />
-                  </div>
-                </div>
-                <p className="text-xs text-muted">Tip: You can find coordinates from Google Maps by right-clicking a location.</p>
+                <MapPicker
+                  initialCoords={form.coordinates}
+                  initialAddress={form.address}
+                  onLocationSelect={({ coordinates, address, city, country }) => {
+                    setForm(prev => ({ ...prev, coordinates, address, city: city || prev.city, country: country || prev.country }));
+                  }}
+                />
               </div>
               <div className="step-actions">
                 <button className="btn btn-outline" onClick={() => setStep(2)}>← Back</button>
