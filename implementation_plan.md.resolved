@@ -1,342 +1,233 @@
-# TRIBE — Full Project Implementation Plan
+# Tribe — Player Profile & Feed Improvements
 
-Building the complete TRIBE platform from `tribe_specification.md`. MERN stack + Socket.io + Redis.
+## Background
 
----
-
-## User Review Required
-
-> [!IMPORTANT]
-> **MongoDB**: Do you already have a MongoDB instance (Atlas / local)? I'll set up with a `MONGO_URI` env var either way, but knowing helps me configure the connection string.
-
-> [!IMPORTANT]
-> **Redis**: Do you have Redis running locally, or should I use an in-memory fallback for development? Redis is needed for Socket.io scaling and BullMQ job queues. For local dev, I can mock these or use `ioredis` pointed at `localhost:6379`.
-
-> [!IMPORTANT]
-> **File Storage**: For development, should I use local file storage (multer to disk) and swap to S3/Cloudinary later? Or do you have S3/Cloudinary credentials ready?
-
-> [!IMPORTANT]
-> **Scope**: This is a very large platform. I recommend building in **4 phases**, shipping a working app after Phase 1 (auth + lobbies + chat + basic feed). Do you want me to build all 4 phases now, or ship Phase 1 first so you can see it running?
+After auditing the Tribe codebase and benchmarking against Sofascore, Mingle Sport, Strava, Hobbimate, and SportEasy, this plan addresses three user-reported issues plus several other gaps identified through research.
 
 ---
 
-## Project Structure
+## Issues Identified
 
-```
-tribe project/
-├── tribe_specification.md          # (existing)
-├── server/                          # Express.js backend
-│   ├── package.json
-│   ├── .env                         # Environment variables
-│   ├── src/
-│   │   ├── app.js                   # Express app setup
-│   │   ├── server.js                # HTTP + Socket.io boot
-│   │   ├── config/
-│   │   │   ├── db.js                # MongoDB connection
-│   │   │   ├── redis.js             # Redis connection
-│   │   │   ├── socket.js            # Socket.io setup + Redis adapter
-│   │   │   └── sportConfig.js       # Sport validation map
-│   │   ├── models/                  # Mongoose schemas
-│   │   │   ├── User.js
-│   │   │   ├── Lobby.js
-│   │   │   ├── JoinRequest.js
-│   │   │   ├── Message.js
-│   │   │   ├── Notification.js
-│   │   │   ├── Squad.js
-│   │   │   ├── Challenge.js
-│   │   │   ├── Venue.js
-│   │   │   ├── TimeSlot.js
-│   │   │   └── Tournament.js
-│   │   ├── middleware/
-│   │   │   ├── auth.js              # JWT verification
-│   │   │   ├── roles.js             # RBAC middleware
-│   │   │   ├── rateLimiter.js       # Express rate limiting
-│   │   │   └── validate.js          # Input validation wrapper
-│   │   ├── routes/
-│   │   │   ├── auth.routes.js
-│   │   │   ├── user.routes.js
-│   │   │   ├── lobby.routes.js
-│   │   │   ├── request.routes.js
-│   │   │   ├── squad.routes.js
-│   │   │   ├── challenge.routes.js
-│   │   │   ├── venue.routes.js
-│   │   │   ├── tournament.routes.js
-│   │   │   └── admin.routes.js
-│   │   ├── controllers/
-│   │   │   ├── auth.controller.js
-│   │   │   ├── user.controller.js
-│   │   │   ├── lobby.controller.js
-│   │   │   ├── request.controller.js
-│   │   │   ├── squad.controller.js
-│   │   │   ├── challenge.controller.js
-│   │   │   ├── venue.controller.js
-│   │   │   ├── tournament.controller.js
-│   │   │   └── admin.controller.js
-│   │   ├── socket/
-│   │   │   ├── handlers.js          # Socket event handlers
-│   │   │   └── emitters.js          # Socket emit helpers
-│   │   ├── jobs/
-│   │   │   ├── lobbyExpiry.job.js    # BullMQ lobby cleanup
-│   │   │   ├── waitlistPromotion.job.js
-│   │   │   └── ringerAlert.job.js
-│   │   └── utils/
-│   │       ├── errors.js            # Custom error classes
-│   │       └── helpers.js           # Shared utilities
-│   └── seed/
-│       └── seed.js                  # Dev seed data
-│
-├── client/                          # React frontend (Vite)
-│   ├── package.json
-│   ├── vite.config.js
-│   ├── index.html
-│   ├── public/
-│   └── src/
-│       ├── main.jsx
-│       ├── App.jsx
-│       ├── index.css                # Design system tokens + global styles
-│       ├── api/
-│       │   └── axios.js             # Axios instance with JWT interceptor
-│       ├── context/
-│       │   ├── AuthContext.jsx
-│       │   ├── SocketContext.jsx
-│       │   └── ThemeContext.jsx      # Dark/light mode
-│       ├── hooks/
-│       │   ├── useAuth.js
-│       │   ├── useSocket.js
-│       │   └── useFetch.js
-│       ├── components/
-│       │   ├── layout/
-│       │   │   ├── Navbar.jsx
-│       │   │   ├── Sidebar.jsx
-│       │   │   ├── Footer.jsx
-│       │   │   └── Layout.jsx
-│       │   ├── ui/
-│       │   │   ├── Button.jsx
-│       │   │   ├── Card.jsx
-│       │   │   ├── Modal.jsx
-│       │   │   ├── Input.jsx
-│       │   │   ├── Badge.jsx
-│       │   │   ├── Skeleton.jsx
-│       │   │   ├── Avatar.jsx
-│       │   │   └── ThemeToggle.jsx
-│       │   ├── lobby/
-│       │   │   ├── LobbyCard.jsx
-│       │   │   ├── LobbyForm.jsx
-│       │   │   ├── RosterPanel.jsx
-│       │   │   ├── SlotCounter.jsx
-│       │   │   └── ChatPanel.jsx
-│       │   ├── feed/
-│       │   │   ├── FeedFilters.jsx
-│       │   │   └── FeedList.jsx
-│       │   └── notifications/
-│       │       └── NotificationDropdown.jsx
-│       ├── pages/
-│       │   ├── Landing.jsx
-│       │   ├── Login.jsx
-│       │   ├── Register.jsx
-│       │   ├── Feed.jsx
-│       │   ├── LobbyCreate.jsx
-│       │   ├── LobbyDetail.jsx
-│       │   ├── Profile.jsx
-│       │   ├── SquadProfile.jsx
-│       │   ├── SquadDiscovery.jsx
-│       │   ├── VenueProfile.jsx
-│       │   ├── VenueDirectory.jsx
-│       │   ├── VenueDashboard.jsx
-│       │   ├── TournamentDirectory.jsx
-│       │   ├── TournamentDetail.jsx
-│       │   ├── AdminDashboard.jsx
-│       │   └── NotFound.jsx
-│       └── styles/
-│           ├── components/          # Per-component CSS modules
-│           └── pages/               # Per-page CSS
+### Reported by User
+1. **Live feed chat disappears after lobby closes** — messages are only DMs, no lobby-level group chat; once a lobby is `LOCKED/COMPLETED/CANCELLED`, there's nothing to read back.
+2. **Location filter has no "Near Me"** — the feed only has a static city dropdown; no GPS proximity option.
+3. **No match history page with filters** — history is buried inside the profile page (last 20, no filter). No dedicated page.
+
+### Additional Gaps Found (codebase audit + competitor research)
+4. **Player profile is thin** — no skill level, no bio/about section, no sport-specific stats (matches played, wins, sport breakdown), no "player card" feel.
+5. **Feed only shows OPEN lobbies** — completed/past matches are completely invisible from the feed perspective; no way to see what happened.
+6. **Profile has no completeness nudge** — new users see an empty profile with no guidance.
+7. **Lobby chat is DM-only** — there is no group chat/discussion thread attached to a lobby for all confirmed players.
+8. **No sport-specific filtering on Profile history** — the match history on profile has zero filter controls.
+9. **getHistory() on server doesn't paginate** — hardcoded `.limit(50)` and `.limit(100)` with no cursor support.
+10. **Feed "Load More" resets on filter change** — minor UX bug: cursor doesn't reset when sport/city filter changes.
+
+---
+
+## Proposed Changes
+
+---
+
+### Feature 1 — Lobby Group Chat (Persistent Post-Game Discussion)
+
+**Root Cause:** Messages are only 1-on-1 DMs (the `Message` model has `senderId`/`receiverId`). There is no lobby-level message thread.
+
+#### [MODIFY] [Message.js](file:///c:/Users/fahad/Downloads/tribe%20project/server/src/models/Message.js)
+Add an optional `lobbyId` field and a `type` discriminator (`DM` / `LOBBY_CHAT`). Index on `lobbyId`.
+
+#### [MODIFY] [handlers.js](file:///c:/Users/fahad/Downloads/tribe%20project/server/src/socket/handlers.js)
+Add a new `send_lobby_message` socket event. Any confirmed player (or organizer) can post. Messages are persisted and broadcast to the `lobby:{id}` room. Works regardless of lobby status.
+
+#### [NEW] server: `GET /lobbies/:id/chat` route + `getLobbyChat` controller
+Returns paginated chat messages for a lobby. **No status check** — works for COMPLETED lobbies too. Requires auth; user must be in `confirmedPlayerIds` or be organizer.
+
+#### [MODIFY] [LobbyDetail.jsx](file:///c:/Users/fahad/Downloads/tribe%20project/client/src/pages/LobbyDetail.jsx)
+Add a **"Chat"** tab alongside "Roster" and "Requests". Chat tab:
+- Loads history via REST on mount.
+- Pushes new messages via socket in real-time.
+- Visible to all confirmed players (and organizer) regardless of lobby status (OPEN, LOCKED, COMPLETED, CANCELLED).
+- Shows a read-only view with a "Match is finished" banner if status is COMPLETED/CANCELLED, but still shows all messages.
+
+---
+
+### Feature 2 — Near Me (GPS Location Filter)
+
+**Root Cause:** `Feed.jsx` only has a `<select>` for city. The backend `listLobbies` already supports `lng`, `lat`, `radiusKm` geo queries via `$near`, but the frontend never sends them.
+
+#### [MODIFY] [Feed.jsx](file:///c:/Users/fahad/Downloads/tribe%20project/client/src/pages/Feed.jsx)
+- Add a **"📍 Near Me"** toggle button beside the city dropdown.
+- On click: call `navigator.geolocation.getCurrentPosition()`, store `{lat, lng}` in state, send to API.
+- Add a **radius slider** (5 km / 10 km / 25 km / 50 km) that appears when Near Me is active.
+- Disable city filter when Near Me is active (they're mutually exclusive).
+- Show a "Location denied" error state with fallback to city filter.
+
+#### No server changes needed — geo query is already implemented in `listLobbies`.
+
+---
+
+### Feature 3 — Match History Page with Filters
+
+**Root Cause:** History is embedded in Profile (max 20, no filters). Need a dedicated, filterable, paginated history page.
+
+#### [NEW] `MatchHistory.jsx` page (client)
+Route: `/history` (or `/history/:userId` for other users)
+
+Features:
+- **Status filter tabs:** All | Completed | Upcoming | Cancelled
+- **Sport filter chips:** same SPORTS array as Feed
+- **Date range picker:** "Last 7 days / 30 days / 3 months / All time"
+- **Role filter:** "All | As Organizer | As Player"
+- **Infinite scroll / Load More** with cursor-based pagination
+- Each card shows: sport, format, venue/address, date, status badge, role badge (Organizer/Player)
+- Clickable → goes to `/lobby/:id`
+
+#### [MODIFY] [user.controller.js](file:///c:/Users/fahad/Downloads/tribe%20project/server/src/controllers/user.controller.js)
+Upgrade `getHistory()`:
+- Add query params: `sport`, `status`, `role` (`organizer`/`player`/`all`), `from` date, `to` date, `cursor`, `limit`
+- Return `{ lobbies, hasMore, nextCursor }`
+- Support viewing other users' history (for public profile) via a separate param
+
+#### [MODIFY] [App.jsx](file:///c:/Users/fahad/Downloads/tribe%20project/client/src/App.jsx)
+Register `/history` and `/history/:userId` routes.
+
+#### [MODIFY] [Profile.jsx](file:///c:/Users/fahad/Downloads/tribe%20project/client/src/pages/Profile.jsx)
+Replace the embedded match list with a "View Full History →" link to the new page.
+
+---
+
+### Feature 4 — Enhanced Player Profile
+
+**Root Cause:** Profile is very sparse — only name, avatar, WhatsApp, preferences, and a raw list of matches. No personality, no stats, no skill level.
+
+#### [MODIFY] [User.js](file:///c:/Users/fahad/Downloads/tribe%20project/server/src/models/User.js)
+Add fields:
+```js
+bio: { type: String, default: '', maxlength: 300 },
+skillLevel: { type: String, enum: ['Beginner', 'Intermediate', 'Advanced', 'Pro'], default: 'Beginner' },
+location: { type: String, default: '' }, // "Islamabad, Pakistan" - display field
 ```
 
----
+#### [MODIFY] [user.controller.js](file:///c:/Users/fahad/Downloads/tribe%20project/server/src/controllers/user.controller.js)
+- `patchMe`: accept `bio`, `skillLevel`, `location` fields
+- `getHistory` / `getUserPublicProfile`: compute **stats block** dynamically:
+  ```js
+  {
+    totalMatches,         // all lobbies participated in
+    asOrganizer,          // how many they organized
+    sportBreakdown: [{ sport, count }],  // top sports
+    completedMatches,     // COMPLETED status only
+  }
+  ```
 
-## Phase 1: Foundation & Core Loop (Build First)
-*Goal: A working app where users can register, browse lobbies, create lobbies, request to join, get approved, and chat — all in real-time.*
-
-### 1A — Project Scaffolding
-- Initialize `server/` with Express, Mongoose, Socket.io, dotenv, cors, helmet
-- Initialize `client/` with Vite + React (no TypeScript for speed)
-- Set up `.env` with `MONGO_URI`, `JWT_SECRET`, `REDIS_URL`, `PORT`
-- Configure proxy/CORS between client and server
-
-### 1B — Design System & Global CSS
-- Create `index.css` with all design tokens from Section 2.2 (Warm Precision theme)
-- Import Google Fonts (Outfit, Inter, JetBrains Mono)
-- Dark/light mode CSS variables with `[data-theme="dark"]` selector
-- Base component styles (buttons, cards, inputs, badges, modals)
-- Skeleton loading animation keyframes
-
-### 1C — Database Models (All 10)
-- User, Lobby, JoinRequest, Message, Notification, Squad, Challenge, Venue, TimeSlot, Tournament
-- All indexes defined in schema files
-- `sportConfig.js` validation map
-
-### 1D — Auth System
-- Register/Login routes + controllers
-- JWT middleware (cookie-based httpOnly)
-- RBAC middleware (roles array check)
-- Rate limiting middleware
-- Frontend: AuthContext, Login page, Register page, protected routes
-
-### 1E — Lobby CRUD + Feed
-- Create, read, update, close, delete lobby
-- Sport validation on create
-- Feed API with cursor pagination + sport/location filters
-- Frontend: Feed page with LobbyCards, filters, infinite scroll
-- Frontend: LobbyCreate multi-step form
-- Frontend: LobbyDetail page (organizer vs player view)
-
-### 1F — Join Request System
-- Request to join, approve, reject, cancel, dropout endpoints
-- Atomic `findOneAndUpdate` with slot guard
-- Duplicate prevention (compound index)
-- Frontend: Request button on lobby cards, approve/reject UI for organizers
-
-### 1G — Real-Time Socket.io
-- Socket.io server setup with room-based architecture
-- JWT auth on socket handshake
-- Lobby room join/leave
-- `roster_updated`, `lobby_locked`, `request_received`, `player_dropped` events
-- Frontend: SocketContext, live feed updates, live lobby state
-
-### 1H — In-Lobby Chat
-- Messages collection CRUD
-- Paginated `GET /lobbies/:id/messages`
-- Socket.io `new_message` event broadcast within lobby room
-- Frontend: ChatPanel component with real-time messages
-
-### 1I — Landing Page
-- Hero section with the Warm Precision design
-- "How it Works" section
-- CTA to login/register
-- Responsive layout
+#### [MODIFY] [Profile.jsx](file:///c:/Users/fahad/Downloads/tribe%20project/client/src/pages/Profile.jsx)
+New visual layout:
+- **Profile Hero card:** large avatar, name, location chip, skill badge, sport prefs, bio
+- **Stats row:** "X Matches · Y Organized · Z Sports" — horizontal counters
+- **Edit form:** bio textarea, skill level select, location field
+- **Sport breakdown:** mini bar chart showing sport distribution
+- **Profile completeness bar** (if `isMe` and profile is <80% complete): "Add bio", "Set skill level", "Add WhatsApp"
 
 ---
 
-## Phase 2: Venues & Squads
-*Goal: Full venue booking ecosystem and squad/challenge system.*
+### Feature 5 — Feed Improvements (Past Matches Section)
 
-### 2A — Venue System
-- Venue model with sport-specific pitches
-- TimeSlot collection with all CRUD
-- Venue directory, profile, booking endpoints
-- Booking cancellation with 24h rule
-- Frontend: VenueDirectory, VenueProfile, booking flow in LobbyCreate
+**Root Cause:** The feed only lists `status: 'OPEN'` lobbies. There's no way to discover or browse completed/past matches from the feed.
 
-### 2B — Venue Owner Dashboard
-- Dashboard page with booking calendar grid
-- Pitch & slot management UI
-- Booking history & analytics
-- Instant Book vs Request to Book toggle
-- Socket.io venue events (booking_received, booking_confirmed, booking_cancelled)
+#### [MODIFY] [Feed.jsx](file:///c:/Users/fahad/Downloads/tribe%20project/client/src/pages/Feed.jsx)
+Add **"Past Matches"** tab next to the implied "Live / Upcoming" tab:
+- Toggle between **"🟢 Open"** and **"📜 Past"** tabs.
+- Past tab hits a new API endpoint: `GET /lobbies?status=COMPLETED&...` with same sport/city/geo filters.
+- Each past lobby card shows final player count, sport, date, and links to lobby detail (read-only view with chat accessible).
 
-### 2C — Squad System
-- Squad CRUD + discovery endpoints
-- Squad profile page
-- Squad invite system
-- Frontend: SquadDiscovery, SquadProfile pages
-
-### 2D — Squad vs. Squad Challenges
-- Challenge collection CRUD
-- Accept → auto-create lobby workflow
-- Challenge expiry via BullMQ
-- Socket.io challenge events
-- Frontend: Challenge browsing, posting, accepting
+#### [MODIFY] [lobby.controller.js](file:///c:/Users/fahad/Downloads/tribe%20project/server/src/controllers/lobby.controller.js)
+`listLobbies`: Allow `status` param to be passed (currently hardcoded `status: 'OPEN'`). Admin already uses this freely; now expose it for authenticated users for `COMPLETED` status.
 
 ---
 
-## Phase 3: Advanced Features
-*Goal: Waitlists, ringer alerts, tournaments, notifications.*
+### Feature 6 — Profile Completeness Score
 
-### 3A — Waitlist & Ringer System
-- Waitlist join/promotion logic
-- BullMQ delayed jobs for 5-minute promotion timer
-- Ringer alert geoproximity queries
-- Frontend: Waitlist UI, ringer toggle, ringer alert notifications
+Simple nudge system for new users to fill in their profile.
 
-### 3B — Lobby Expiry System
-- BullMQ recurring job for lobby transitions
-- Status enum (COMPLETED, EXPIRED) handling
-- Feed exclusion logic
+#### [MODIFY] [Profile.jsx](file:///c:/Users/fahad/Downloads/tribe%20project/client/src/pages/Profile.jsx)
+Compute a score (0–100%) based on:
+| Field | Points |
+|-------|--------|
+| Avatar | 20 |
+| Bio | 20 |
+| WhatsApp | 20 |
+| Skill Level | 20 |
+| ≥1 sport preference | 20 |
 
-### 3C — Notification System
-- Notification collection CRUD
-- In-app notification center
-- Notification preferences (per-channel, per-type)
-- Frontend: NotificationDropdown, notification preferences in profile
-
-### 3D — Tournament System
-- Tournament CRUD + registration
-- Bracket generation logic (4 formats)
-- Tournament matches as linked lobbies
-- Frontend: TournamentDirectory, TournamentDetail with bracket visualization
+Show a **progress bar** and a checklist of "Complete your profile" nudge items. Only visible for `isMe`.
 
 ---
 
-## Phase 4: Admin & Polish
-*Goal: Admin panel, file uploads, final polish.*
+### Feature 7 — UX / Bug Fixes
 
-### 4A — Admin Dashboard
-- Metrics API (active lobbies, users, bookings)
-- Venue verification queue
-- User ban system
-- Frontend: AdminDashboard page
+#### Fix: Feed cursor not resetting on filter change
+**[MODIFY] [Feed.jsx](file:///c:/Users/fahad/Downloads/tribe%20project/client/src/pages/Feed.jsx)**
+The `useEffect` for `fetchLobbies` already uses `[sportFilter, city]` as deps, which triggers a fresh fetch. But `nextCursor` isn't reset. Add `setNextCursor(null); setHasMore(false);` before the fetch in the filter-change path.
 
-### 4B — File Upload System
-- S3/Cloudinary presigned URL generation
-- Avatar upload on profile
-- Venue photo upload
-- Squad logo upload
+#### Fix: `getHistory` hardcoded limits
+**[MODIFY] [user.controller.js](file:///c:/Users/fahad/Downloads/tribe%20project/server/src/controllers/user.controller.js)**
+Remove hardcoded `.limit(50)`/`.limit(100)` and replace with cursor-based pagination (already planned in Feature 3).
 
-### 4C — User Profile
-- Full profile page with stats, preferences, history
-- Notification preferences UI
-- Ringer mode toggle
-- Match/request history timeline
+#### Fix: Lobby detail chat read-only after game ends
+Covered by Feature 1.
 
-### 4D — Responsive & Accessibility Polish
-- Mobile-first responsive breakpoints
-- Keyboard navigation
-- ARIA labels
-- Performance optimization (lazy loading, code splitting)
+---
+
+## File Change Summary
+
+| File | Action | Reason |
+|------|--------|--------|
+| `server/src/models/Message.js` | Modify | Add `lobbyId`, `type` for group chat |
+| `server/src/models/User.js` | Modify | Add `bio`, `skillLevel`, `location` |
+| `server/src/socket/handlers.js` | Modify | Add `send_lobby_message` socket event |
+| `server/src/controllers/lobby.controller.js` | Modify | Allow `status` param in listLobbies |
+| `server/src/controllers/user.controller.js` | Modify | Paginated history + stats block + new profile fields |
+| `server/src/routes/user.routes.js` | Modify | Nothing new needed |
+| `client/src/pages/Feed.jsx` | Modify | Near Me GPS, Past Matches tab, cursor reset fix |
+| `client/src/pages/LobbyDetail.jsx` | Modify | Add Chat tab with persistent lobby group chat |
+| `client/src/pages/Profile.jsx` | Modify | Enhanced profile, stats, completeness score |
+| `client/src/pages/MatchHistory.jsx` | **New** | Dedicated match history page with filters |
+| `client/src/App.jsx` | Modify | Register `/history` routes |
+| `client/src/styles/pages/MatchHistory.css` | **New** | Styles for history page |
+| `client/src/styles/pages/Profile.css` | Modify | Stats row, skill badge, bio, completeness bar |
 
 ---
 
 ## Verification Plan
 
-### Per-Phase Verification
-After each phase, I will:
-1. **Start the server** and verify no startup errors
-2. **Start the client** and verify all pages render
-3. **Test API endpoints** with actual HTTP requests
-4. **Test real-time features** by opening multiple browser tabs
-5. **Verify database** — check indexes created, documents stored correctly
+### Automated / Self-Test
+- Start both server and client (`npm run dev` in each folder)
+- Test Near Me: click button, allow location, verify API call includes `lat/lng/radiusKm`
+- Test lobby chat: join lobby as two users, send messages, verify persistence after lobby COMPLETED
+- Test history page: filter by sport, status, role — verify results change
+- Test profile: add bio/skill level, save, view as another user
 
-### Phase 1 Specific Tests
-- Register → Login → JWT stored in cookie
-- Create lobby → Appears in feed in real-time
-- Request to join → Organizer sees notification → Approve → Slot decrements atomically
-- Open lobby in 2 tabs → Slot updates appear in both simultaneously
-- Send chat message → Appears in real-time for all lobby members
-- Attempt duplicate join → Returns 409
+### Manual Checklist
+- [ ] After a lobby ends (status → COMPLETED), chat tab still shows all messages
+- [ ] "Near Me" shows lobbies within selected radius
+- [ ] `/history` page loads with all filters working
+- [ ] Profile completeness bar disappears once all fields filled
+- [ ] Past matches tab on Feed shows only COMPLETED lobbies
 
 ---
 
-## Technology Dependencies
+## Open Questions
 
-### Server (`package.json`)
-```
-express, mongoose, socket.io, @socket.io/redis-adapter,
-jsonwebtoken, bcryptjs, helmet, cors, dotenv,
-express-rate-limit, express-validator, ioredis, bullmq
-```
+> [!IMPORTANT]
+> **Q1 — Lobby Group Chat Access:** Should the lobby chat be visible to **all confirmed players only**, or also to **pending/waitlisted players**? Or completely **public** (anyone who can see the lobby)?
 
-### Client (`package.json`)
-```
-react, react-dom, react-router-dom, axios, socket.io-client
-```
-*Intentionally minimal frontend dependencies — no UI library, all custom CSS per the Warm Precision design system.*
+> [!IMPORTANT]
+> **Q2 — Near Me radius default:** What default radius should "Near Me" use? Suggested: **10 km** default with options 5 / 10 / 25 / 50 km.
+
+> [!IMPORTANT]
+> **Q3 — Match History page — private vs public:** Should `/history/:userId` for another user be accessible to anyone logged in, or only to the user themselves?
+
+> [!NOTE]
+> **Q4 — Profile location field:** Should this be a free-text field (e.g. "Islamabad, Pakistan") or use the same Pakistan city dropdown?
+
+> [!NOTE]
+> **Q5 — Past matches in Feed:** Should past matches only show YOUR lobbies, or everyone's completed lobbies (community-wide)?

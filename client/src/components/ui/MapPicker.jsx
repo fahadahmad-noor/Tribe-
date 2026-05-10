@@ -38,7 +38,7 @@ const MapPicker = ({ initialCoords = [0, 0], initialAddress = '', onLocationSele
   const [flyTarget, setFlyTarget] = useState(null);
   const debounceRef = useRef(null);
 
-  const defaultCenter = position ? [position.lat, position.lng] : [25.2048, 55.2708]; // Default Dubai
+  const defaultCenter = position ? [position.lat, position.lng] : [33.6844, 73.0479]; // Default Islamabad, Pakistan
 
   const reverseGeocode = useCallback(async (lat, lng) => {
     try {
@@ -70,7 +70,8 @@ const MapPicker = ({ initialCoords = [0, 0], initialAddress = '', onLocationSele
     if (!query || query.length < 3) { setSearchResults([]); return; }
     setSearching(true);
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=5`);
+      const searchQuery = query.toLowerCase().includes('pakistan') ? query : `${query}, Pakistan`;
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&addressdetails=1&limit=5&countrycodes=pk`);
       const data = await res.json();
       setSearchResults(data);
     } catch { setSearchResults([]); }
@@ -150,7 +151,7 @@ const MapPicker = ({ initialCoords = [0, 0], initialAddress = '', onLocationSele
         )}
       </div>
       <div className="map-container" style={{ height: 350, borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
-        <MapContainer center={defaultCenter} zoom={position ? 15 : 3} style={{ height: '100%', width: '100%' }}>
+        <MapContainer center={defaultCenter} zoom={position ? 15 : 6} style={{ height: '100%', width: '100%' }}>
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

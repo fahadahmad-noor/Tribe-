@@ -1,3 +1,4 @@
+/* ── Feed Page ──────────────────────────────────────────────── */
 .feed-page { padding-top: var(--space-6); }
 
 .feed-header {
@@ -7,9 +8,36 @@
   margin-bottom: var(--space-6);
   gap: var(--space-4);
 }
-
 .feed-header h1 { margin-bottom: var(--space-1); }
 
+/* Feed tabs (Open / Past) */
+.feed-tabs {
+  display: flex;
+  gap: var(--space-2);
+  border-bottom: 2px solid var(--border-default);
+  padding-bottom: 0;
+}
+
+.feed-tab-btn {
+  padding: var(--space-2) var(--space-5);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+.feed-tab-btn:hover { color: var(--text-primary); }
+.feed-tab-btn.active {
+  color: var(--accent-primary);
+  border-bottom-color: var(--accent-primary);
+}
+
+/* Sport filter chips */
 .feed-filters {
   display: flex;
   flex-wrap: wrap;
@@ -31,28 +59,71 @@
   cursor: pointer;
   transition: all var(--transition-default);
 }
-
 .filter-chip:hover { border-color: var(--accent-primary); color: var(--accent-primary); }
 .filter-chip.active { background: var(--accent-primary); color: #fff; border-color: var(--accent-primary); }
 
+/* Location bar */
 .location-filter-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
   margin-bottom: var(--space-6);
-  padding: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
 }
 
-.radius-select {
-  max-width: 150px;
+/* Near Me button */
+.near-me-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-weight: 600;
+  border: 2px solid var(--border-default);
+  border-radius: var(--radius-full);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+  transition: all 0.2s;
 }
+.near-me-btn:hover, .near-me-btn.active {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  background: var(--accent-primary-subtle);
+}
+
+/* Radius chips */
+.radius-control {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.radius-chip {
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.radius-chip:hover, .radius-chip.active {
+  background: var(--accent-secondary);
+  border-color: var(--accent-secondary);
+  color: #fff;
+}
+
+.geo-error { color: var(--error, #e53e3e); }
 
 .lobby-grid { animation: fadeIn 300ms ease; }
 
 @media (max-width: 768px) {
   .feed-header { flex-direction: column; }
+  .location-filter-bar { flex-direction: column; align-items: flex-start; }
 }

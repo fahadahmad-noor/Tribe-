@@ -1,7 +1,7 @@
-const Notification = require('../models/Notification');
+import Notification from '../models/Notification.js';
 
 // GET /notifications — Paginated notifications for current user
-exports.getNotifications = async (req, res) => {
+export async function getNotifications(req, res) {
   try {
     const { limit = 20, page = 1 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -19,10 +19,10 @@ exports.getNotifications = async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch notifications' });
   }
-};
+}
 
 // PATCH /notifications/:id/read — Mark single notification as read
-exports.markRead = async (req, res) => {
+export async function markRead(req, res) {
   try {
     const notification = await Notification.findOneAndUpdate(
       { _id: req.params.id, userId: req.userId },
@@ -34,10 +34,10 @@ exports.markRead = async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: 'Failed to mark notification' });
   }
-};
+}
 
 // PATCH /notifications/read-all — Mark all notifications as read
-exports.markAllRead = async (req, res) => {
+export async function markAllRead(req, res) {
   try {
     await Notification.updateMany(
       { userId: req.userId, isRead: false },
@@ -47,4 +47,4 @@ exports.markAllRead = async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: 'Failed to mark notifications' });
   }
-};
+}

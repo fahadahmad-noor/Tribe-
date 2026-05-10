@@ -1,9 +1,19 @@
-import { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import api from '../api/axios';
 import '../styles/pages/Messages.css';
+
+// Debounce helper
+function useDebounce(value, delay) {
+  const [dv, setDv] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDv(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return dv;
+}
 
 const Messages = () => {
   const { user } = useAuth();
@@ -12,14 +22,23 @@ const Messages = () => {
   const initialUserId = searchParams.get('user');
 
   const [conversations, setConversations] = useState([]);
-  const [activeUser, setActiveUser] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [loadingConv, setLoadingConv] = useState(true);
-  const messagesEndRef = useRef(null);
+  const [activeUser,    setActiveUser]    = useState(null);
+  const [messages,      setMessages]      = useState([]);
+  const [newMessage,    setNewMessage]    = useState('');
+  const [loadingConv,   setLoadingConv]   = useState(true);
 
-  // Fetch inbox
-  const fetchInbox = async () => {
+  // Player search state
+  const [searchQuery,   setSearchQuery]   = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [showSearch,    setShowSearch]    = useState(false);
+
+  const messagesEndRef = useRef(null);
+  const searchInputRef = useRef(null);
+  const debouncedQuery = useDebounce(searchQuery, 280);
+
+  // ── Inbox ──────────────────────────────────────────────────────
+  const fetchInbox = useCallback(async () => {
     try {
       const res = await api.get('/messages/inbox');
       setConversations(res.data.conversations || []);
@@ -28,17 +47,15 @@ const Messages = () => {
     } finally {
       setLoadingConv(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { fetchInbox(); }, []);
+  useEffect(() => { fetchInbox(); }, [fetchInbox]);
 
-  // Fetch specific thread
-  const fetchThread = async (userId) => {
+  // ── Thread ─────────────────────────────────────────────────────
+  const fetchThread = useCallback(async (userId) => {
     try {
       const res = await api.get(`/messages/${userId}`);
       setMessages(res.data.messages || []);
-      
-      // Update conversations list so this user is visible if brand new
       if (!conversations.some(c => c.user._id === userId)) {
         const userRes = await api.get(`/users/${userId}`);
         if (userRes.data?.user) {
@@ -51,53 +68,66 @@ const Messages = () => {
     } catch (err) {
       console.error('Failed to load thread', err);
     }
-  };
+  }, [conversations]);
 
-  useEffect(() => {
-    if (activeUser) {
-      fetchThread(activeUser._id);
-    }
-  }, [activeUser]);
+  useEffect(() => { if (activeUser) fetchThread(activeUser._id); }, [activeUser?._id]);
 
-  // Initial user from URL
+  // ── Initial URL param ──────────────────────────────────────────
   useEffect(() => {
     if (initialUserId && !activeUser) {
-      // Find within conversations
       const conv = conversations.find(c => c.user._id === initialUserId);
-      if (conv) {
-        setActiveUser(conv.user);
-      } else {
-        // Assume valid ID, let fetchThread fetch the user details
-        setActiveUser({ _id: initialUserId, name: 'Loading...' }); 
-      }
+      if (conv) setActiveUser(conv.user);
+      else setActiveUser({ _id: initialUserId, name: 'Loading…' });
     }
   }, [initialUserId, conversations]);
 
-  // Scroll to bottom
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  // ── Scroll ─────────────────────────────────────────────────────
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
-  // Socket
+  // ── Socket ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!socket) return;
     const handleDm = (msg) => {
-      // If it belongs to active thread, push it
       if (activeUser && (msg.senderId._id === activeUser._id || msg.receiverId._id === activeUser._id)) {
         setMessages(prev => [...prev.filter(m => m._id !== msg._id), msg]);
       }
-      fetchInbox(); // Refresh sidebar always
+      fetchInbox();
     };
-
     socket.on('direct_message', handleDm);
     return () => socket.off('direct_message', handleDm);
-  }, [socket, activeUser]);
+  }, [socket, activeUser, fetchInbox]);
 
+  // ── Player search (scored API) ─────────────────────────────────
+  useEffect(() => {
+    if (!showSearch) return;
+    if (debouncedQuery.length < 2) { setSearchResults([]); return; }
+    let cancelled = false;
+    setSearchLoading(true);
+    api.get('/users/search', { params: { q: debouncedQuery } })
+      .then(res => { if (!cancelled) setSearchResults(res.data.users || []); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setSearchLoading(false); });
+    return () => { cancelled = true; };
+  }, [debouncedQuery, showSearch]);
+
+  const openSearch = () => {
+    setShowSearch(true);
+    setSearchQuery('');
+    setSearchResults([]);
+    setTimeout(() => searchInputRef.current?.focus(), 50);
+  };
+
+  const selectSearchUser = (u) => {
+    setActiveUser(u);
+    setShowSearch(false);
+    setSearchQuery('');
+    setSearchResults([]);
+  };
+
+  // ── Send ───────────────────────────────────────────────────────
   const handleSend = async (e) => {
     e.preventDefault();
     if (!newMessage.trim() || !activeUser) return;
-    
-    // Optimistic UI update could go here
     try {
       if (socket) {
         socket.emit('send_direct_message', { receiverId: activeUser._id, message: newMessage });
@@ -105,7 +135,7 @@ const Messages = () => {
         await api.post(`/messages/${activeUser._id}`, { message: newMessage });
       }
       setNewMessage('');
-    } catch (err) {
+    } catch {
       alert('Failed to send message');
     }
   };
@@ -115,66 +145,128 @@ const Messages = () => {
   return (
     <div className="messages-page page" id="messages-page">
       <div className="container messages-container">
-        
-        {/* Sidebar */}
+
+        {/* ── Sidebar ─────────────────────────────────────────── */}
         <div className={`messages-sidebar ${activeUser ? 'hide-mobile' : ''}`}>
-          <h2 className="mb-4">Messages</h2>
-          {conversations.length === 0 ? (
-            <p className="text-muted">No conversations yet.</p>
-          ) : (
-            <div className="conversation-list">
-              {conversations.map(conv => (
-                <div 
-                  key={conv.user._id} 
-                  className={`conversation-item ${activeUser?._id === conv.user._id ? 'active' : ''}`}
-                  onClick={() => setActiveUser(conv.user)}
-                >
-                  {conv.user.avatarUrl ? (
-                    <img src={conv.user.avatarUrl} alt="" className="avatar avatar-md" />
-                  ) : (
-                    <div className="avatar avatar-md avatar-placeholder">{conv.user.name?.[0]}</div>
-                  )}
-                  <div className="conversation-details">
-                    <h4>{conv.user.name}</h4>
-                    <span className="last-message-text">
-                      {conv.lastMessage.sentByMe && 'You: '} 
-                      {conv.lastMessage.message}
-                    </span>
+          <div className="sidebar-header">
+            <h2>Messages</h2>
+            <button className="btn btn-primary btn-sm" onClick={openSearch} id="new-message-btn" title="New Message">
+              ✏️ New
+            </button>
+          </div>
+
+          {/* Player Search Panel */}
+          {showSearch && (
+            <div className="player-search-panel">
+              <div className="search-input-wrapper">
+                <span className="search-icon">🔍</span>
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  className="input search-input"
+                  placeholder="Search by name or email…"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  id="player-search-input"
+                />
+                <button className="search-close-btn" onClick={() => { setShowSearch(false); setSearchQuery(''); setSearchResults([]); }}>✕</button>
+              </div>
+
+              <div className="search-results">
+                {searchLoading && (
+                  <div className="search-loading">
+                    <div className="search-spinner" />
+                    <span className="text-sm text-muted">Searching…</span>
                   </div>
-                </div>
-              ))}
+                )}
+                {!searchLoading && searchQuery.length >= 2 && searchResults.length === 0 && (
+                  <p className="search-empty text-muted text-sm">No players found for "{searchQuery}"</p>
+                )}
+                {searchResults.map(u => (
+                  <div key={u._id} className="search-result-item" onClick={() => selectSearchUser(u)}>
+                    {u.avatarUrl
+                      ? <img src={u.avatarUrl} alt="" className="avatar avatar-sm" />
+                      : <div className="avatar avatar-sm avatar-placeholder">{u.name?.[0]}</div>}
+                    <div className="search-result-info">
+                      <span className="search-result-name">{u.name}</span>
+                      <span className="search-result-sub">
+                        {u.email}
+                        {u.skillLevel && u.skillLevel !== 'Beginner' && <> · {u.skillLevel}</>}
+                        {u.displayLocation && <> · {u.displayLocation}</>}
+                      </span>
+                    </div>
+                    <Link
+                      to={`/profile/${u._id}`}
+                      className="search-profile-btn"
+                      onClick={e => e.stopPropagation()}
+                      title="View Profile"
+                    >
+                      👤
+                    </Link>
+                  </div>
+                ))}
+              </div>
             </div>
+          )}
+
+          {/* Conversation List */}
+          {!showSearch && (
+            conversations.length === 0
+              ? <p className="text-muted mt-4">No conversations yet. Search for a player to start!</p>
+              : (
+                <div className="conversation-list">
+                  {conversations.map(conv => (
+                    <div
+                      key={conv.user._id}
+                      className={`conversation-item ${activeUser?._id === conv.user._id ? 'active' : ''}`}
+                      onClick={() => setActiveUser(conv.user)}
+                    >
+                      {conv.user.avatarUrl
+                        ? <img src={conv.user.avatarUrl} alt="" className="avatar avatar-md" />
+                        : <div className="avatar avatar-md avatar-placeholder">{conv.user.name?.[0]}</div>}
+                      <div className="conversation-details">
+                        <h4>{conv.user.name}</h4>
+                        <span className="last-message-text">
+                          {conv.lastMessage.sentByMe && 'You: '}
+                          {conv.lastMessage.message}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
           )}
         </div>
 
-        {/* Chat Area */}
+        {/* ── Chat Area ───────────────────────────────────────── */}
         <div className={`messages-chat ${!activeUser ? 'hide-mobile' : ''}`}>
           {activeUser ? (
             <>
               <div className="chat-header">
                 <button className="btn btn-icon hide-desktop mr-2" onClick={() => setActiveUser(null)}>←</button>
-                {activeUser.avatarUrl ? (
-                  <img src={activeUser.avatarUrl} alt="" className="avatar avatar-sm" />
-                ) : (
-                  <div className="avatar avatar-sm avatar-placeholder">{activeUser.name?.[0]}</div>
-                )}
-                <h3 className="ml-2">{activeUser.name}</h3>
+                {activeUser.avatarUrl
+                  ? <img src={activeUser.avatarUrl} alt="" className="avatar avatar-sm" />
+                  : <div className="avatar avatar-sm avatar-placeholder">{activeUser.name?.[0]}</div>}
+                <div className="chat-header-info">
+                  <h3>{activeUser.name}</h3>
+                  {activeUser.skillLevel && <span className="chat-header-sub">{activeUser.skillLevel}</span>}
+                </div>
+                <Link to={`/profile/${activeUser._id}`} className="btn btn-outline btn-sm ml-auto" title="View Profile">
+                  👤 Profile
+                </Link>
               </div>
 
               <div className="chat-body">
-                {messages.length === 0 ? (
-                  <p className="text-center text-muted mt-6 border p-4 rounded bg-surface">This is the start of your conversation with {activeUser.name}.</p>
-                ) : (
-                  messages.map(msg => {
-                    const isMe = msg.senderId._id === user._id;
+                {messages.length === 0
+                  ? <p className="text-center text-muted mt-6 border p-4 rounded bg-surface">Start of conversation with {activeUser.name}.</p>
+                  : messages.map(msg => {
+                    const isMe = msg.senderId._id === user._id || msg.senderId === user._id;
                     return (
                       <div key={msg._id} className={`chat-bubble-wrapper ${isMe ? 'mine' : 'theirs'}`}>
                         {!isMe && (
-                          msg.senderId.avatarUrl ? (
-                            <img src={msg.senderId.avatarUrl} alt="" className="avatar avatar-xs mt-1" />
-                          ) : (
-                            <div className="avatar avatar-xs avatar-placeholder mt-1">{msg.senderId.name?.[0]}</div>
-                          )
+                          msg.senderId.avatarUrl
+                            ? <img src={msg.senderId.avatarUrl} alt="" className="avatar avatar-xs mt-1" />
+                            : <div className="avatar avatar-xs avatar-placeholder mt-1">{msg.senderId.name?.[0]}</div>
                         )}
                         <div className={`chat-bubble ${isMe ? 'bg-primary text-white' : 'bg-surface'}`}>
                           <p>{msg.message}</p>
@@ -183,18 +275,18 @@ const Messages = () => {
                           </span>
                         </div>
                       </div>
-                    )
+                    );
                   })
-                )}
+                }
                 <div ref={messagesEndRef} />
               </div>
 
               <form className="chat-input-area" onSubmit={handleSend}>
-                <input 
-                  type="text" 
-                  className="input flex-1" 
-                  placeholder="Type a message..." 
-                  value={newMessage} 
+                <input
+                  type="text"
+                  className="input flex-1"
+                  placeholder="Type a message…"
+                  value={newMessage}
                   onChange={e => setNewMessage(e.target.value)}
                 />
                 <button type="submit" className="btn btn-primary" disabled={!newMessage.trim()}>Send</button>
@@ -204,7 +296,8 @@ const Messages = () => {
             <div className="chat-empty-state hide-mobile">
               <span className="text-4xl mb-4 block">💬</span>
               <h2 className="text-muted">Select a conversation</h2>
-              <p className="text-secondary">Choose a user from the left to start messaging.</p>
+              <p className="text-secondary">Or search for a player to message directly.</p>
+              <button className="btn btn-primary mt-4" onClick={openSearch}>🔍 Find a Player</button>
             </div>
           )}
         </div>

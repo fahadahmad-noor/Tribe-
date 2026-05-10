@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import Message from '../models/Message.js';
+import Notification from '../models/Notification.js';
 import User from '../models/User.js';
 
 function partnerId(msg, me) {
@@ -84,6 +85,18 @@ export async function sendDm(req, res) {
   const payload = populated.toObject();
   io?.to(`user:${userId}`).emit('direct_message', payload);
   io?.to(`user:${req.userId}`).emit('direct_message', payload);
+
+  // 🔔 Persist notification for receiver
+  const sender = await User.findById(req.userId).select('name').lean();
+  const notif = await Notification.create({
+    userId,
+    type: 'MESSAGE',
+    title: `💬 ${sender?.name || 'Someone'} sent you a message`,
+    message: String(message).trim().slice(0, 100),
+    isRead: false,
+    metadata: { senderId: req.userId, senderName: sender?.name },
+  });
+  io?.to(`user:${userId}`).emit('notification', notif.toObject());
 
   return res.status(201).json({ message: populated });
 }

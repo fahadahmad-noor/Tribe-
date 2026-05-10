@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import { getRedis, isRedisAvailable } from '../config/redis.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_jwt_secret_change_me';
 
@@ -13,6 +14,21 @@ export async function requireAuth(req, res, next) {
     const token = h?.startsWith('Bearer ') ? h.slice(7) : null;
     if (!token) return res.status(401).json({ error: 'Unauthorized' });
     const { sub } = jwt.verify(token, JWT_SECRET);
+
+    // Check if this token was blacklisted on logout
+    if (await isRedisAvailable()) {
+      try {
+        const redis = getRedis();
+        if (!redis.status || redis.status === 'end') {
+          await redis.connect().catch(() => {});
+        }
+        const blacklisted = await redis.get(`blacklist:${token}`);
+        if (blacklisted) return res.status(401).json({ error: 'Token has been revoked. Please log in again.' });
+      } catch (redisErr) {
+        console.warn('⚠️  Blacklist check failed (skipping):', redisErr?.message);
+      }
+    }
+
     const user = await User.findById(sub);
     if (!user || user.banned) return res.status(401).json({ error: 'Unauthorized' });
     req.userId = sub;

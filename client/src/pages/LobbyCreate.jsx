@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import MapPicker from '../components/ui/MapPicker';
+import PAKISTAN_CITIES from '../data/pakistan_cities';
 import '../styles/pages/LobbyCreate.css';
 
 const SPORTS = ['Football', 'Cricket', 'Basketball', 'Tennis', 'Padel', 'Volleyball', 'Badminton', 'Pickleball', 'TableTennis'];
@@ -32,7 +33,7 @@ const LobbyCreate = () => {
     address: '',
     coordinates: [0, 0],
     city: '',
-    country: '',
+    country: 'Pakistan',
     totalSlots: 1,
     description: '',
   });
@@ -158,14 +159,26 @@ const LobbyCreate = () => {
                 <MapPicker
                   initialCoords={form.coordinates}
                   initialAddress={form.address}
-                  onLocationSelect={({ coordinates, address, city, country }) => {
-                    setForm(prev => ({ ...prev, coordinates, address, city: city || prev.city, country: country || prev.country }));
+                  onLocationSelect={({ coordinates, address, city }) => {
+                    setForm(prev => ({ ...prev, coordinates, address, city: city || prev.city, country: 'Pakistan' }));
                   }}
                 />
+                <div className="input-group mt-4">
+                  <label className="input-label">City <span style={{color:'var(--color-error)'}}>*</span></label>
+                  <select
+                    className="input"
+                    value={form.city}
+                    onChange={e => setForm({ ...form, city: e.target.value })}
+                    required
+                  >
+                    <option value="">Select a city...</option>
+                    {PAKISTAN_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
               </div>
               <div className="step-actions">
                 <button className="btn btn-outline" onClick={() => setStep(2)}>← Back</button>
-                <button className="btn btn-primary btn-lg" onClick={() => setStep(4)} disabled={!form.address}>Next →</button>
+                <button className="btn btn-primary btn-lg" onClick={() => setStep(4)} disabled={!form.address || !form.city}>Next →</button>
               </div>
             </div>
           )}

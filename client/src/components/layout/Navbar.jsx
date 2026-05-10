@@ -32,7 +32,6 @@ const Navbar = () => {
             <Link to="/messages" className="nav-link">Messages</Link>
             <Link to="/squads" className="nav-link">Squads</Link>
             <Link to="/venues" className="nav-link">Venues</Link>
-            <Link to="/tournaments" className="nav-link">Tournaments</Link>
             <Link to="/challenges" className="nav-link">Challenges</Link>
           </div>
         )}
@@ -47,6 +46,11 @@ const Navbar = () => {
           {user ? (
             <>
               <NotificationDropdown />
+              {user.roles?.includes('admin') && (
+                <Link to="/admin" className="btn btn-outline btn-sm hide-mobile" id="admin-panel-btn" style={{ borderColor: 'var(--accent-primary)', color: 'var(--accent-primary)' }}>
+                  🛡️ Admin
+                </Link>
+              )}
               <Link to="/lobby/create" className="btn btn-primary btn-sm hide-mobile" id="create-lobby-btn">
                 + Create Lobby
               </Link>

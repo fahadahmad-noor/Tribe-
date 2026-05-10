@@ -15,8 +15,8 @@ const Login = () => {
     setError('');
     setLoading(true);
     try {
-      await login(form.email, form.password);
-      navigate('/feed');
+      const data = await login(form.email, form.password);
+      navigate(data.user.roles?.includes('admin') ? '/admin' : '/feed');
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed');
     } finally {

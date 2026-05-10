@@ -18,6 +18,7 @@ r.get('/me/history', requireAuth, user.getHistory);
 r.get('/me/squads', requireAuth, user.getMeSquads);
 r.get('/search', requireAuth, user.searchUsers);
 r.post('/me/avatar', requireAuth, upload.single('avatar'), user.uploadAvatar);
+r.get('/:id/public', requireAuth, user.getUserPublicProfile);
 r.get('/:id', requireAuth, user.getUserById);
 
 export default r;

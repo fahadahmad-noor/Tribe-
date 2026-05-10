@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const timeSlotSchema = new mongoose.Schema({
   venueId: { type: mongoose.Schema.Types.ObjectId, ref: 'Venue', required: true },
@@ -16,4 +16,4 @@ timeSlotSchema.index({ venueId: 1, pitchName: 1, startTime: 1, status: 1 });
 // User's booking history
 timeSlotSchema.index({ status: 1, bookedByUserId: 1 });
 
-module.exports = mongoose.model('TimeSlot', timeSlotSchema);
+export default mongoose.model('TimeSlot', timeSlotSchema);

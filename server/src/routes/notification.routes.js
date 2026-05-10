@@ -1,9 +1,10 @@
-const router = require('express').Router();
-const ctrl = require('../controllers/notification.controller');
-const auth = require('../middleware/auth');
+import { Router } from 'express';
+import { requireAuth } from '../middleware/auth.js';
+import * as ctrl from '../controllers/notification.controller.js';
 
-router.get('/', auth, ctrl.getNotifications);
-router.patch('/read-all', auth, ctrl.markAllRead);
-router.patch('/:id/read', auth, ctrl.markRead);
+const r = Router();
+r.get('/', requireAuth, ctrl.getNotifications);
+r.patch('/read-all', requireAuth, ctrl.markAllRead);
+r.patch('/:id/read', requireAuth, ctrl.markRead);
 
-module.exports = router;
+export default r;

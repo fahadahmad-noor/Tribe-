@@ -1,0 +1,342 @@
+# TRIBE — Full Project Implementation Plan
+
+Building the complete TRIBE platform from `tribe_specification.md`. MERN stack + Socket.io + Redis.
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **MongoDB**: Do you already have a MongoDB instance (Atlas / local)? I'll set up with a `MONGO_URI` env var either way, but knowing helps me configure the connection string.
+
+> [!IMPORTANT]
+> **Redis**: Do you have Redis running locally, or should I use an in-memory fallback for development? Redis is needed for Socket.io scaling and BullMQ job queues. For local dev, I can mock these or use `ioredis` pointed at `localhost:6379`.
+
+> [!IMPORTANT]
+> **File Storage**: For development, should I use local file storage (multer to disk) and swap to S3/Cloudinary later? Or do you have S3/Cloudinary credentials ready?
+
+> [!IMPORTANT]
+> **Scope**: This is a very large platform. I recommend building in **4 phases**, shipping a working app after Phase 1 (auth + lobbies + chat + basic feed). Do you want me to build all 4 phases now, or ship Phase 1 first so you can see it running?
+
+---
+
+## Project Structure
+
+```
+tribe project/
+├── tribe_specification.md          # (existing)
+├── server/                          # Express.js backend
+│   ├── package.json
+│   ├── .env                         # Environment variables
+│   ├── src/
+│   │   ├── app.js                   # Express app setup
+│   │   ├── server.js                # HTTP + Socket.io boot
+│   │   ├── config/
+│   │   │   ├── db.js                # MongoDB connection
+│   │   │   ├── redis.js             # Redis connection
+│   │   │   ├── socket.js            # Socket.io setup + Redis adapter
+│   │   │   └── sportConfig.js       # Sport validation map
+│   │   ├── models/                  # Mongoose schemas
+│   │   │   ├── User.js
+│   │   │   ├── Lobby.js
+│   │   │   ├── JoinRequest.js
+│   │   │   ├── Message.js
+│   │   │   ├── Notification.js
+│   │   │   ├── Squad.js
+│   │   │   ├── Challenge.js
+│   │   │   ├── Venue.js
+│   │   │   ├── TimeSlot.js
+│   │   │   └── Tournament.js
+│   │   ├── middleware/
+│   │   │   ├── auth.js              # JWT verification
+│   │   │   ├── roles.js             # RBAC middleware
+│   │   │   ├── rateLimiter.js       # Express rate limiting
+│   │   │   └── validate.js          # Input validation wrapper
+│   │   ├── routes/
+│   │   │   ├── auth.routes.js
+│   │   │   ├── user.routes.js
+│   │   │   ├── lobby.routes.js
+│   │   │   ├── request.routes.js
+│   │   │   ├── squad.routes.js
+│   │   │   ├── challenge.routes.js
+│   │   │   ├── venue.routes.js
+│   │   │   ├── tournament.routes.js
+│   │   │   └── admin.routes.js
+│   │   ├── controllers/
+│   │   │   ├── auth.controller.js
+│   │   │   ├── user.controller.js
+│   │   │   ├── lobby.controller.js
+│   │   │   ├── request.controller.js
+│   │   │   ├── squad.controller.js
+│   │   │   ├── challenge.controller.js
+│   │   │   ├── venue.controller.js
+│   │   │   ├── tournament.controller.js
+│   │   │   └── admin.controller.js
+│   │   ├── socket/
+│   │   │   ├── handlers.js          # Socket event handlers
+│   │   │   └── emitters.js          # Socket emit helpers
+│   │   ├── jobs/
+│   │   │   ├── lobbyExpiry.job.js    # BullMQ lobby cleanup
+│   │   │   ├── waitlistPromotion.job.js
+│   │   │   └── ringerAlert.job.js
+│   │   └── utils/
+│   │       ├── errors.js            # Custom error classes
+│   │       └── helpers.js           # Shared utilities
+│   └── seed/
+│       └── seed.js                  # Dev seed data
+│
+├── client/                          # React frontend (Vite)
+│   ├── package.json
+│   ├── vite.config.js
+│   ├── index.html
+│   ├── public/
+│   └── src/
+│       ├── main.jsx
+│       ├── App.jsx
+│       ├── index.css                # Design system tokens + global styles
+│       ├── api/
+│       │   └── axios.js             # Axios instance with JWT interceptor
+│       ├── context/
+│       │   ├── AuthContext.jsx
+│       │   ├── SocketContext.jsx
+│       │   └── ThemeContext.jsx      # Dark/light mode
+│       ├── hooks/
+│       │   ├── useAuth.js
+│       │   ├── useSocket.js
+│       │   └── useFetch.js
+│       ├── components/
+│       │   ├── layout/
+│       │   │   ├── Navbar.jsx
+│       │   │   ├── Sidebar.jsx
+│       │   │   ├── Footer.jsx
+│       │   │   └── Layout.jsx
+│       │   ├── ui/
+│       │   │   ├── Button.jsx
+│       │   │   ├── Card.jsx
+│       │   │   ├── Modal.jsx
+│       │   │   ├── Input.jsx
+│       │   │   ├── Badge.jsx
+│       │   │   ├── Skeleton.jsx
+│       │   │   ├── Avatar.jsx
+│       │   │   └── ThemeToggle.jsx
+│       │   ├── lobby/
+│       │   │   ├── LobbyCard.jsx
+│       │   │   ├── LobbyForm.jsx
+│       │   │   ├── RosterPanel.jsx
+│       │   │   ├── SlotCounter.jsx
+│       │   │   └── ChatPanel.jsx
+│       │   ├── feed/
+│       │   │   ├── FeedFilters.jsx
+│       │   │   └── FeedList.jsx
+│       │   └── notifications/
+│       │       └── NotificationDropdown.jsx
+│       ├── pages/
+│       │   ├── Landing.jsx
+│       │   ├── Login.jsx
+│       │   ├── Register.jsx
+│       │   ├── Feed.jsx
+│       │   ├── LobbyCreate.jsx
+│       │   ├── LobbyDetail.jsx
+│       │   ├── Profile.jsx
+│       │   ├── SquadProfile.jsx
+│       │   ├── SquadDiscovery.jsx
+│       │   ├── VenueProfile.jsx
+│       │   ├── VenueDirectory.jsx
+│       │   ├── VenueDashboard.jsx
+│       │   ├── TournamentDirectory.jsx
+│       │   ├── TournamentDetail.jsx
+│       │   ├── AdminDashboard.jsx
+│       │   └── NotFound.jsx
+│       └── styles/
+│           ├── components/          # Per-component CSS modules
+│           └── pages/               # Per-page CSS
+```
+
+---
+
+## Phase 1: Foundation & Core Loop (Build First)
+*Goal: A working app where users can register, browse lobbies, create lobbies, request to join, get approved, and chat — all in real-time.*
+
+### 1A — Project Scaffolding
+- Initialize `server/` with Express, Mongoose, Socket.io, dotenv, cors, helmet
+- Initialize `client/` with Vite + React (no TypeScript for speed)
+- Set up `.env` with `MONGO_URI`, `JWT_SECRET`, `REDIS_URL`, `PORT`
+- Configure proxy/CORS between client and server
+
+### 1B — Design System & Global CSS
+- Create `index.css` with all design tokens from Section 2.2 (Warm Precision theme)
+- Import Google Fonts (Outfit, Inter, JetBrains Mono)
+- Dark/light mode CSS variables with `[data-theme="dark"]` selector
+- Base component styles (buttons, cards, inputs, badges, modals)
+- Skeleton loading animation keyframes
+
+### 1C — Database Models (All 10)
+- User, Lobby, JoinRequest, Message, Notification, Squad, Challenge, Venue, TimeSlot, Tournament
+- All indexes defined in schema files
+- `sportConfig.js` validation map
+
+### 1D — Auth System
+- Register/Login routes + controllers
+- JWT middleware (cookie-based httpOnly)
+- RBAC middleware (roles array check)
+- Rate limiting middleware
+- Frontend: AuthContext, Login page, Register page, protected routes
+
+### 1E — Lobby CRUD + Feed
+- Create, read, update, close, delete lobby
+- Sport validation on create
+- Feed API with cursor pagination + sport/location filters
+- Frontend: Feed page with LobbyCards, filters, infinite scroll
+- Frontend: LobbyCreate multi-step form
+- Frontend: LobbyDetail page (organizer vs player view)
+
+### 1F — Join Request System
+- Request to join, approve, reject, cancel, dropout endpoints
+- Atomic `findOneAndUpdate` with slot guard
+- Duplicate prevention (compound index)
+- Frontend: Request button on lobby cards, approve/reject UI for organizers
+
+### 1G — Real-Time Socket.io
+- Socket.io server setup with room-based architecture
+- JWT auth on socket handshake
+- Lobby room join/leave
+- `roster_updated`, `lobby_locked`, `request_received`, `player_dropped` events
+- Frontend: SocketContext, live feed updates, live lobby state
+
+### 1H — In-Lobby Chat
+- Messages collection CRUD
+- Paginated `GET /lobbies/:id/messages`
+- Socket.io `new_message` event broadcast within lobby room
+- Frontend: ChatPanel component with real-time messages
+
+### 1I — Landing Page
+- Hero section with the Warm Precision design
+- "How it Works" section
+- CTA to login/register
+- Responsive layout
+
+---
+
+## Phase 2: Venues & Squads
+*Goal: Full venue booking ecosystem and squad/challenge system.*
+
+### 2A — Venue System
+- Venue model with sport-specific pitches
+- TimeSlot collection with all CRUD
+- Venue directory, profile, booking endpoints
+- Booking cancellation with 24h rule
+- Frontend: VenueDirectory, VenueProfile, booking flow in LobbyCreate
+
+### 2B — Venue Owner Dashboard
+- Dashboard page with booking calendar grid
+- Pitch & slot management UI
+- Booking history & analytics
+- Instant Book vs Request to Book toggle
+- Socket.io venue events (booking_received, booking_confirmed, booking_cancelled)
+
+### 2C — Squad System
+- Squad CRUD + discovery endpoints
+- Squad profile page
+- Squad invite system
+- Frontend: SquadDiscovery, SquadProfile pages
+
+### 2D — Squad vs. Squad Challenges
+- Challenge collection CRUD
+- Accept → auto-create lobby workflow
+- Challenge expiry via BullMQ
+- Socket.io challenge events
+- Frontend: Challenge browsing, posting, accepting
+
+---
+
+## Phase 3: Advanced Features
+*Goal: Waitlists, ringer alerts, tournaments, notifications.*
+
+### 3A — Waitlist & Ringer System
+- Waitlist join/promotion logic
+- BullMQ delayed jobs for 5-minute promotion timer
+- Ringer alert geoproximity queries
+- Frontend: Waitlist UI, ringer toggle, ringer alert notifications
+
+### 3B — Lobby Expiry System
+- BullMQ recurring job for lobby transitions
+- Status enum (COMPLETED, EXPIRED) handling
+- Feed exclusion logic
+
+### 3C — Notification System
+- Notification collection CRUD
+- In-app notification center
+- Notification preferences (per-channel, per-type)
+- Frontend: NotificationDropdown, notification preferences in profile
+
+### 3D — Tournament System
+- Tournament CRUD + registration
+- Bracket generation logic (4 formats)
+- Tournament matches as linked lobbies
+- Frontend: TournamentDirectory, TournamentDetail with bracket visualization
+
+---
+
+## Phase 4: Admin & Polish
+*Goal: Admin panel, file uploads, final polish.*
+
+### 4A — Admin Dashboard
+- Metrics API (active lobbies, users, bookings)
+- Venue verification queue
+- User ban system
+- Frontend: AdminDashboard page
+
+### 4B — File Upload System
+- S3/Cloudinary presigned URL generation
+- Avatar upload on profile
+- Venue photo upload
+- Squad logo upload
+
+### 4C — User Profile
+- Full profile page with stats, preferences, history
+- Notification preferences UI
+- Ringer mode toggle
+- Match/request history timeline
+
+### 4D — Responsive & Accessibility Polish
+- Mobile-first responsive breakpoints
+- Keyboard navigation
+- ARIA labels
+- Performance optimization (lazy loading, code splitting)
+
+---
+
+## Verification Plan
+
+### Per-Phase Verification
+After each phase, I will:
+1. **Start the server** and verify no startup errors
+2. **Start the client** and verify all pages render
+3. **Test API endpoints** with actual HTTP requests
+4. **Test real-time features** by opening multiple browser tabs
+5. **Verify database** — check indexes created, documents stored correctly
+
+### Phase 1 Specific Tests
+- Register → Login → JWT stored in cookie
+- Create lobby → Appears in feed in real-time
+- Request to join → Organizer sees notification → Approve → Slot decrements atomically
+- Open lobby in 2 tabs → Slot updates appear in both simultaneously
+- Send chat message → Appears in real-time for all lobby members
+- Attempt duplicate join → Returns 409
+
+---
+
+## Technology Dependencies
+
+### Server (`package.json`)
+```
+express, mongoose, socket.io, @socket.io/redis-adapter,
+jsonwebtoken, bcryptjs, helmet, cors, dotenv,
+express-rate-limit, express-validator, ioredis, bullmq
+```
+
+### Client (`package.json`)
+```
+react, react-dom, react-router-dom, axios, socket.io-client
+```
+*Intentionally minimal frontend dependencies — no UI library, all custom CSS per the Warm Precision design system.*

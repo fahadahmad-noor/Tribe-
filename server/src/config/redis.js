@@ -1,4 +1,4 @@
-const Redis = require('ioredis');
+import Redis from 'ioredis';
 
 let redis = null;
 let pub = null;
@@ -24,7 +24,7 @@ const createRedisClient = () => {
   return client;
 };
 
-const isRedisAvailable = async () => {
+export const isRedisAvailable = async () => {
   if (redisAvailable !== null) return redisAvailable;
 
   // Probe Redis once at startup. If it's down, treat Redis features as optional.
@@ -39,6 +39,7 @@ const isRedisAvailable = async () => {
       new Promise((_, reject) => setTimeout(() => reject(new Error('Redis ping timeout')), 1200)),
     ]);
     redisAvailable = true;
+    console.log('✅ Redis is available');
   } catch (err) {
     redisAvailable = false;
     console.warn('⚠️  Redis unavailable, continuing without Redis:', err?.message || err);
@@ -48,19 +49,19 @@ const isRedisAvailable = async () => {
   return redisAvailable;
 };
 
-const getRedis = () => {
+export const getRedis = () => {
   if (!redis) redis = createRedisClient();
   return redis;
 };
 
-const getPub = () => {
+export const getPub = () => {
   if (!pub) pub = createRedisClient();
   return pub;
 };
 
-const getSub = () => {
+export const getSub = () => {
   if (!sub) sub = createRedisClient();
   return sub;
 };
 
-module.exports = { getRedis, getPub, getSub, createRedisClient, isRedisAvailable };
+export { createRedisClient };

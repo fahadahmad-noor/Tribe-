@@ -27,5 +27,11 @@ lobbySchema.index({ location: '2dsphere' });
 lobbySchema.index({ 'location.city': 1, 'location.country': 1 });
 lobbySchema.index({ sport: 1, status: 1, dateTime: 1 });
 lobbySchema.index({ 'location.country': 1, 'location.city': 1, status: 1 });
+// History query indexes
+lobbySchema.index({ organizerId: 1, status: 1, dateTime: -1 });
+lobbySchema.index({ confirmedPlayerIds: 1, status: 1, dateTime: -1 });
+// computeStats aggregate index
+lobbySchema.index({ organizerId: 1, status: 1 });
+lobbySchema.index({ confirmedPlayerIds: 1, status: 1 });
 
 export default mongoose.model('Lobby', lobbySchema);

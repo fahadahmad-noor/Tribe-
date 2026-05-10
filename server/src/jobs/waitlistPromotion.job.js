@@ -1,8 +1,8 @@
-const { Queue, Worker } = require('bullmq');
-const { getRedis } = require('../config/redis');
-const JoinRequest = require('../models/JoinRequest');
-const Lobby = require('../models/Lobby');
-const { createNotification } = require('../utils/helpers');
+import { Queue, Worker } from 'bullmq';
+import { getRedis } from '../config/redis.js';
+import JoinRequest from '../models/JoinRequest.js';
+import Lobby from '../models/Lobby.js';
+import { createNotification } from '../utils/helpers.js';
 
 const QUEUE_NAME = 'waitlist-promotion';
 let queue = null;
@@ -12,7 +12,7 @@ const getQueue = () => {
   return queue;
 };
 
-const startWorker = (io) => {
+export const startWorker = (io) => {
   const worker = new Worker(QUEUE_NAME, async (job) => {
     const { lobbyId, requestId } = job.data;
     const request = await JoinRequest.findById(requestId);
@@ -24,7 +24,6 @@ const startWorker = (io) => {
     }
   }, { connection: getRedis() });
 
-  // If Redis is down, BullMQ emits "error". Without a listener Node treats it as unhandled and crashes.
   worker.on('error', (err) => {
     console.warn('⚠️  Waitlist worker error (Redis likely unavailable):', err?.message || err);
   });
@@ -46,18 +45,21 @@ const promoteNext = async (lobbyId, io) => {
     userId: nextWaiter.userId,
     lobbyId,
     type: 'WAITLIST_PROMOTION',
-    title: 'Your Turn!',
-    message: 'A slot opened up! You have 5 minutes to accept.',
-    metadata: { requestId: nextWaiter._id },
+    title: '🎉 Slot Available!',
+    message: 'A spot opened up in your lobby! Tap to accept before it\'s gone.',
+    metadata: { requestId: nextWaiter._id, lobbyId },
   });
 
-  // Schedule expiry check in 5 minutes
+  // Notify all lobby viewers (so they see position shift)
+  io?.to(`lobby:${lobbyId}`).emit('waitlist_updated');
+
+  // Schedule expiry: if user hasn't accepted in 5 min, move to next
   const q = getQueue();
-  await q.add('check-acceptance', { lobbyId, requestId: nextWaiter._id.toString() }, { delay: 5 * 60 * 1000 });
+  await q.add('check-acceptance', { lobbyId: lobbyId.toString(), requestId: nextWaiter._id.toString() }, { delay: 5 * 60 * 1000 });
 };
 
-const enqueuePromotion = async (lobbyId) => {
-  await promoteNext(lobbyId, null);
+export const enqueuePromotion = async (lobbyId, io) => {
+  await promoteNext(lobbyId, io);
 };
 
-module.exports = { startWorker, enqueuePromotion, getQueue };
+export { getQueue };

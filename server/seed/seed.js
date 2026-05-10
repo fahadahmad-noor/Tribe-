@@ -1,11 +1,11 @@
-require('dotenv').config();
-const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
-const User = require('../src/models/User');
-const Lobby = require('../src/models/Lobby');
-const Squad = require('../src/models/Squad');
-const Venue = require('../src/models/Venue');
-const TimeSlot = require('../src/models/TimeSlot');
+import 'dotenv/config';
+import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
+import User from '../src/models/User.js';
+import Lobby from '../src/models/Lobby.js';
+import Squad from '../src/models/Squad.js';
+import Venue from '../src/models/Venue.js';
+import TimeSlot from '../src/models/TimeSlot.js';
 
 const seed = async () => {
   await mongoose.connect(process.env.MONGO_URI);
@@ -17,12 +17,12 @@ const seed = async () => {
   // Create users
   const hash = await bcrypt.hash('password123', 12);
   const users = await User.insertMany([
-    { name: 'Admin User', email: 'admin@tribe.com', passwordHash: hash, roles: ['player', 'admin'], preferences: ['Football', 'Cricket'] },
-    { name: 'Fahad Ahmed', email: 'fahad@tribe.com', passwordHash: hash, roles: ['player'], preferences: ['Football', 'Padel', 'Cricket'], ringerMode: true },
-    { name: 'Omar Khan', email: 'omar@tribe.com', passwordHash: hash, roles: ['player'], preferences: ['Football', 'Basketball'] },
-    { name: 'Sarah Ali', email: 'sarah@tribe.com', passwordHash: hash, roles: ['player'], preferences: ['Tennis', 'Badminton'] },
-    { name: 'Ali Hassan', email: 'ali@tribe.com', passwordHash: hash, roles: ['player', 'venue_owner'], preferences: ['Football', 'Cricket'] },
-    { name: 'Zara Sheikh', email: 'zara@tribe.com', passwordHash: hash, roles: ['player'], preferences: ['Volleyball', 'Basketball'] },
+    { name: 'Admin User', email: 'admin@tribe.com', password: hash, roles: ['player', 'admin'], preferences: ['Football', 'Cricket'] },
+    { name: 'Fahad Ahmed', email: 'fahad@tribe.com', password: hash, roles: ['player'], preferences: ['Football', 'Padel', 'Cricket'], ringerMode: true },
+    { name: 'Omar Khan', email: 'omar@tribe.com', password: hash, roles: ['player'], preferences: ['Football', 'Basketball'] },
+    { name: 'Sarah Ali', email: 'sarah@tribe.com', password: hash, roles: ['player'], preferences: ['Tennis', 'Badminton'] },
+    { name: 'Ali Hassan', email: 'ali@tribe.com', password: hash, roles: ['player', 'venue_owner'], preferences: ['Football', 'Cricket'] },
+    { name: 'Zara Sheikh', email: 'zara@tribe.com', password: hash, roles: ['player'], preferences: ['Volleyball', 'Basketball'] },
   ]);
 
   console.log(`✅ Created ${users.length} users`);
@@ -31,9 +31,7 @@ const seed = async () => {
   const venue = await Venue.create({
     ownerId: users[4]._id,
     name: 'Sports City Arena',
-    isVerified: true,
-    verificationStatus: 'APPROVED',
-    bookingMode: 'INSTANT_BOOK',
+    verificationStatus: 'VERIFIED',
     sportsSupported: ['Football', 'Cricket', 'Basketball', 'Padel'],
     location: { type: 'Point', coordinates: [55.2708, 25.2048], address: 'Dubai Sports City, Dubai, UAE' },
     amenities: ['Parking', 'Showers', 'Floodlights', 'Cafeteria'],

@@ -1,0 +1,209 @@
+TRIBE ADMIN PANEL — IMPLEMENTATION PLAN
+========================================
+Generated: 2026-05-08
+
+OVERVIEW
+--------
+A full enterprise-grade rebuild of the admin panel, inspired by Stripe, Linear, and Vercel.
+Delivered in 4 phases. This document tracks all decisions, architecture, and file changes.
+
+DESIGN PHILOSOPHY
+-----------------
+- Admin panels exist to get tasks done fast. Every click costs time.
+- Fixed left sidebar (not top tabs) — standard for enterprise tools
+- Admin gets a completely separate shell from the player UI
+- No browser alert()/confirm() — all destructive actions use modals
+- Server-side search with pagination — never dump all records to client
+
+NAVIGATION STRUCTURE
+--------------------
+/admin              -> Overview (live metrics + pending venue queue)
+/admin/users        -> User Management (search, paginate, ban/unban)
+/admin/users/:id    -> User Detail Page (full profile + activity)
+/admin/venues       -> Venue Management (verify/reject queue + all venues)
+/admin/lobbies      -> Lobby Oversight (filter + force close)
+/admin/feed         -> Live Feed (admin view with overlays)
+/admin/audit        -> Audit Log (every admin action logged)
+
+All /admin/* routes use AdminShell (fixed sidebar), NOT the player Layout.
+
+ADMIN SIDEBAR (Desktop)
+-----------------------
+⚡ TRIBE ADMIN
+──────────────
+📊  Overview
+👥  Users          [badge: count if needed]
+🏟️  Venues         [badge: pending count]
+🏆  Lobbies
+📡  Live Feed
+📋  Audit Log
+──────────────
+← Back to App
+🛡️  admin@email.com
+
+LOGIN REDIRECT
+--------------
+After login: if user.roles.includes('admin') → navigate to /admin
+Otherwise → navigate to /feed
+
+SEARCH ALGORITHM — 3-TIER STRATEGY
+------------------------------------
+Tier 1 (Current — Local MongoDB):
+  - Anchored case-insensitive regex on name + email fields
+  - Add compound index: { name: 1, email: 1 }
+  - Manual relevance sort: exact match (3pts) > startsWith (2pts) > contains (1pt)
+  - Frontend debounce: 300ms before API call
+  - Example query: { $or: [{ name: /^fahad/i }, { email: /^fahad/i }] }
+
+Tier 2 (MongoDB Atlas deployed):
+  - Switch to $text index for word-based search (faster, no full scan)
+
+Tier 3 (Scale — Atlas Search):
+  - Enable Atlas Search (Lucene-based) with fuzzy: { maxEdits: 1 }
+  - Handles typos, partial names, multi-field relevance scoring
+
+WHY NOT UNANCHORED REGEX?
+  Unanchored regex (/pattern/) causes a full collection scan (COLLSCAN).
+  At millions of users this crashes. Anchored regex (/^pattern/) uses index scan (IXSCAN).
+
+PAGINATION STRATEGY
+-------------------
+- Offset-based: ?page=1&limit=20
+- Returns: { users, total, page, totalPages }
+- Show: "Showing 1-20 of 847 users"
+- Controls: Prev | 1 2 3 ... 43 | Next
+- Configurable page size: 10 / 20 / 50
+
+USER MANAGEMENT
+---------------
+Search bar (debounced 300ms)
+Filters: Role (All/Admin/Player/Venue Owner) | Status (All/Active/Banned)
+Page size dropdown
+
+Table columns: Avatar | Name | Email | Roles | Joined | Status | Actions
+Actions: 👁 View (→ /admin/users/:id) | 🚫 Ban | ✅ Unban
+
+Ban modal (NOT browser confirm):
+  - "Are you sure you want to ban [Name]?"
+  - Optional reason text field
+  - Cancel | Ban buttons
+
+User Detail Page (/admin/users/:id):
+  - Full page (not modal)
+  - Avatar, name, email, WhatsApp, joined date, status
+  - Roles badges + Edit Roles button
+  - Activity stats: lobbies created, lobbies joined, squads
+  - Last 5 lobbies (organized or joined)
+  - Ban/Unban button
+
+VENUE MANAGEMENT
+----------------
+Section 1 — Pending Queue (amber highlighted border):
+  Full card: name, address, sports, description, owner name+email+WhatsApp
+  Actions: Verify ✅ | Reject ✕ (with confirmation modal)
+
+Section 2 — All Venues (searchable table):
+  Filters: Status (All/Verified/Pending/Rejected)
+  Columns: Name | Location | Owner | Sports | Status | Actions
+
+LOBBY OVERSIGHT
+---------------
+Filter bar: Status (All/OPEN/LOCKED/EXPIRED/COMPLETED) | Sport | Date range
+Table: Sport | Organizer | Location | Date | Slots | Status | Actions
+Actions: 🔒 Force Close (with modal) | 👁 View (→ /lobby/:id)
+
+LIVE FEED — ADMIN VIEW (/admin/feed)
+-------------------------------------
+Same feed component, wrapped in AdminFeedWrapper.
+Top banner: "🛡️ ADMIN VIEW — Viewing as admin"
+Shows ALL lobby statuses (not just OPEN)
+Each lobby card has admin overlay on hover:
+  - 🔒 Force Close
+  - 👤 View Organizer (→ /admin/users/:id)
+
+AUDIT LOG
+---------
+Model fields: adminId, action, targetType, targetId, meta, ip, createdAt
+
+Actions logged:
+  BAN_USER, UNBAN_USER, CHANGE_ROLES, VERIFY_VENUE, REJECT_VENUE, CLOSE_LOBBY
+
+Table: Time | Admin | Action | Target | Detail
+Filters: Date range | Action type
+
+BACKEND API CHANGES
+-------------------
+GET    /admin/dashboard                  (fixed metrics — no hardcoded 0s)
+GET    /admin/users                      ?search ?page ?limit ?role ?status
+GET    /admin/users/:id                  (full profile + stats)
+PATCH  /admin/users/:id/ban              body: { reason? }
+PATCH  /admin/users/:id/unban
+PATCH  /admin/users/:id/roles            body: { roles }
+GET    /admin/venues/pending
+GET    /admin/venues                     ?search ?status ?page
+PATCH  /admin/venues/:id/verify
+PATCH  /admin/venues/:id/reject
+GET    /admin/lobbies                    ?status ?sport ?page
+PATCH  /admin/lobbies/:id/close
+GET    /admin/audit                      ?page ?action ?adminId
+
+FILE CHANGES SUMMARY
+--------------------
+
+NEW FILES:
+  server/src/models/AuditLog.js
+  client/src/components/admin/AdminShell.jsx
+  client/src/components/admin/AdminSidebar.jsx
+  client/src/components/admin/ConfirmModal.jsx
+  client/src/components/admin/UserTable.jsx
+  client/src/components/admin/AdminLobbyActions.jsx
+  client/src/pages/AdminUsers.jsx
+  client/src/pages/AdminUserDetail.jsx
+  client/src/pages/AdminVenues.jsx
+  client/src/pages/AdminLobbies.jsx
+  client/src/pages/AdminFeed.jsx
+  client/src/pages/AdminAudit.jsx
+  client/src/styles/admin.css
+
+MODIFIED FILES:
+  server/src/controllers/admin.controller.js  (all new endpoints + search + audit logging)
+  server/src/routes/admin.routes.js            (new routes)
+  server/src/models/User.js                    (add index on name+email)
+  client/src/App.jsx                           (admin routes + AdminShell wrapper)
+  client/src/pages/Login.jsx                   (role-aware redirect)
+  client/src/pages/AdminDashboard.jsx          (overview panel only, real metrics)
+
+DELIVERY PHASES
+---------------
+Phase 1 — Foundation
+  Backend: enhanced dashboard metrics, unbanUser, getUser, listAllLobbies, forceClose
+  Frontend: AdminShell, AdminSidebar, App.jsx routes, Login redirect, Overview page
+
+Phase 2 — User Management (The Heart)
+  Backend: listUsers with search+pagination+filters, updateUserRoles
+  Frontend: AdminUsers page, AdminUserDetail page, ConfirmModal, UserTable component
+
+Phase 3 — Venues, Lobbies, Feed, Audit
+  Backend: AuditLog model + logging on all actions
+  Frontend: AdminVenues, AdminLobbies, AdminFeed, AdminAudit pages
+
+Phase 4 — Command Palette
+  Ctrl+K global search overlay (users + venues + lobbies + nav actions)
+  Pure React, no library needed
+
+OPEN QUESTIONS / DECISIONS MADE
+--------------------------------
+Q: Should admin see all lobbies in the feed or only OPEN?
+A: All statuses visible in /admin/feed with status filter.
+
+Q: User detail as page or modal?
+A: Full page (/admin/users/:id) — more space for data.
+
+Q: Pagination style: offset or cursor?
+A: Offset (page/limit) — simpler, admin rarely pages past 50.
+
+Q: Should ban require a reason?
+A: Optional — reason field shown but not required.
+
+Q: Multi-admin support?
+A: Audit log records adminId so we can filter by admin later.

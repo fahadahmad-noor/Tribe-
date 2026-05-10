@@ -1,10 +1,10 @@
-const jwt = require('jsonwebtoken');
-const Notification = require('../models/Notification');
+import jwt from 'jsonwebtoken';
+import Notification from '../models/Notification.js';
 
 /**
  * Generate JWT token for a user.
  */
-const generateToken = (user) => {
+export const generateToken = (user) => {
   return jwt.sign(
     { id: user._id, roles: user.roles },
     process.env.JWT_SECRET,
@@ -15,7 +15,7 @@ const generateToken = (user) => {
 /**
  * Set JWT as httpOnly cookie.
  */
-const setTokenCookie = (res, token) => {
+export const setTokenCookie = (res, token) => {
   res.cookie('token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -27,7 +27,7 @@ const setTokenCookie = (res, token) => {
 /**
  * Create and optionally emit a notification.
  */
-const createNotification = async (io, { userId, lobbyId, type, title, message, metadata }) => {
+export const createNotification = async (io, { userId, lobbyId, type, title, message, metadata }) => {
   const notification = await Notification.create({
     userId, lobbyId, type, title, message, metadata,
   });
@@ -43,10 +43,8 @@ const createNotification = async (io, { userId, lobbyId, type, title, message, m
 /**
  * Parse cursor-based pagination params from query.
  */
-const parsePagination = (query, defaultLimit = 20) => {
+export const parsePagination = (query, defaultLimit = 20) => {
   const limit = Math.min(parseInt(query.limit) || defaultLimit, 50);
   const cursor = query.cursor || null;
   return { limit, cursor };
 };
-
-module.exports = { generateToken, setTokenCookie, createNotification, parsePagination };

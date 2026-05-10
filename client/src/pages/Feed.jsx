@@ -2,49 +2,75 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useSocket } from '../context/SocketContext';
 import LobbyCard from '../components/lobby/LobbyCard';
+import PAKISTAN_CITIES from '../data/pakistan_cities';
 import api from '../api/axios';
 import '../styles/pages/Feed.css';
 
 const SPORTS = ['All', 'Football', 'Cricket', 'Basketball', 'Tennis', 'Padel', 'Volleyball', 'Badminton', 'Pickleball', 'TableTennis'];
+const RADII = [5, 10, 25, 50];
 
 const Feed = () => {
   const { socket } = useSocket();
-  const [lobbies, setLobbies] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [feedTab, setFeedTab] = useState('open');        // 'open' | 'past'
+  const [lobbies, setLobbies]   = useState([]);
+  const [loading, setLoading]   = useState(true);
   const [sportFilter, setSportFilter] = useState('All');
-  
-  // Location filters
-  const [city, setCity] = useState('');
-  const [country, setCountry] = useState('');
-  const [radiusKm, setRadiusKm] = useState('25');
-  const [coords, setCoords] = useState(null);
-  const [locating, setLocating] = useState(false);
-  const [availableCities, setAvailableCities] = useState([]);
-  const [availableCountries, setAvailableCountries] = useState([]);
 
+  // Location state
+  const [city, setCity]         = useState('');
+  const [nearMe, setNearMe]     = useState(false);
+  const [geo, setGeo]           = useState(null);        // { lat, lng }
+  const [radiusKm, setRadiusKm] = useState(10);
+  const [geoError, setGeoError] = useState('');
+
+  // Pagination
   const [nextCursor, setNextCursor] = useState(null);
-  const [hasMore, setHasMore] = useState(false);
+  const [hasMore, setHasMore]       = useState(false);
 
-  // Fetch available locations for dropdowns
-  useEffect(() => {
-    api.get('/lobbies/locations').then(res => {
-      setAvailableCities(res.data.cities || []);
-      setAvailableCountries(res.data.countries || []);
-    }).catch(() => {});
-  }, []);
+  // ── Geo ────────────────────────────────────────────────────────
+  const handleNearMe = () => {
+    if (nearMe) {
+      setNearMe(false);
+      setGeo(null);
+      setGeoError('');
+      return;
+    }
+    if (!navigator.geolocation) {
+      setGeoError('Geolocation not supported by your browser.');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setGeo({ lat: coords.latitude, lng: coords.longitude });
+        setNearMe(true);
+        setCity('');       // mutually exclusive with city
+        setGeoError('');
+      },
+      () => {
+        setGeoError('Location access denied. Please allow location or use city filter.');
+      }
+    );
+  };
 
+  // ── Fetch ──────────────────────────────────────────────────────
   const fetchLobbies = useCallback(async (cursor = null) => {
     try {
       setLoading(true);
-      const params = { limit: 20 };
+      const params = { limit: 20, country: 'Pakistan' };
+
+      if (feedTab === 'past') params.status = 'COMPLETED';
+      // else default OPEN
+
       if (sportFilter !== 'All') params.sport = sportFilter;
-      if (city) params.city = city;
-      if (country) params.country = country;
-      if (coords) {
-        params.lng = coords.lng;
-        params.lat = coords.lat;
-        params.radiusKm = radiusKm === 'All' ? '100000' : radiusKm;
+
+      if (nearMe && geo) {
+        params.lat      = geo.lat;
+        params.lng      = geo.lng;
+        params.radiusKm = radiusKm;
+      } else if (city) {
+        params.city = city;
       }
+
       if (cursor) params.cursor = cursor;
 
       const res = await api.get('/lobbies', { params });
@@ -60,46 +86,39 @@ const Feed = () => {
     } finally {
       setLoading(false);
     }
-  }, [sportFilter, city, country, radiusKm, coords]);
+  }, [sportFilter, city, nearMe, geo, radiusKm, feedTab]);
 
-  useEffect(() => { fetchLobbies(); }, [fetchLobbies]);
+  // Reset cursor whenever filters change
+  useEffect(() => {
+    setNextCursor(null);
+    setHasMore(false);
+    fetchLobbies();
+  }, [fetchLobbies]);
 
-  const handleNearMe = () => {
-    if (!navigator.geolocation) return alert('Geolocation not supported');
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        setLocating(false);
-      },
-      () => {
-        alert('Could not get location. Ensure permissions are granted.');
-        setLocating(false);
-      }
-    );
-  };
-
-  // Real-time updates
+  // ── Real-time (only relevant for open tab) ─────────────────────
   useEffect(() => {
     if (!socket) return;
     socket.emit('join_feed');
-
-    const handleCreated = (lobby) => { setLobbies(prev => [lobby, ...prev]); };
+    const handleCreated = (lobby) => { if (feedTab === 'open') setLobbies(prev => [lobby, ...prev]); };
     const handleUpdated = (lobby) => { setLobbies(prev => prev.map(l => l._id === lobby._id ? lobby : l)); };
-
     socket.on('lobby_created', handleCreated);
     socket.on('lobby_updated', handleUpdated);
-
     return () => {
       socket.emit('leave_feed');
       socket.off('lobby_created', handleCreated);
       socket.off('lobby_updated', handleUpdated);
     };
-  }, [socket]);
+  }, [socket, feedTab]);
+
+  const emptyMsg = feedTab === 'past'
+    ? { icon: '📜', title: 'No past matches found', sub: 'Try changing your filters.' }
+    : { icon: '🏟️', title: 'No open lobbies', sub: 'Be the first to create a game!' };
 
   return (
     <div className="feed-page page" id="feed-page">
       <div className="container">
+
+        {/* Header */}
         <div className="feed-header">
           <div>
             <h1>Live Feed</h1>
@@ -108,49 +127,88 @@ const Feed = () => {
           <Link to="/lobby/create" className="btn btn-primary" id="feed-create-btn">+ Create Lobby</Link>
         </div>
 
-        {/* Sport Filter */}
+        {/* Feed tabs */}
+        <div className="feed-tabs mb-4">
+          <button
+            className={`feed-tab-btn ${feedTab === 'open' ? 'active' : ''}`}
+            onClick={() => setFeedTab('open')}
+          >
+            🟢 Open
+          </button>
+          <button
+            className={`feed-tab-btn ${feedTab === 'past' ? 'active' : ''}`}
+            onClick={() => setFeedTab('past')}
+          >
+            📜 Past Matches
+          </button>
+        </div>
+
+        {/* Sport chips */}
         <div className="feed-filters">
           {SPORTS.map(sport => (
-            <button key={sport} className={`filter-chip ${sportFilter === sport ? 'active' : ''}`} onClick={() => setSportFilter(sport)}>
+            <button
+              key={sport}
+              className={`filter-chip ${sportFilter === sport ? 'active' : ''}`}
+              onClick={() => setSportFilter(sport)}
+            >
               {sport}
             </button>
           ))}
         </div>
 
-        {/* Location Filters */}
+        {/* Location bar */}
         <div className="location-filter-bar">
-          <button className={`btn btn-sm ${coords ? 'btn-primary' : 'btn-outline'}`} onClick={coords ? () => setCoords(null) : handleNearMe} disabled={locating}>
-            {locating ? '⏳ Locating...' : coords ? '✖ Clear Location' : '📍 Near Me'}
+          <button
+            className={`btn btn-sm near-me-btn ${nearMe ? 'active' : ''}`}
+            onClick={handleNearMe}
+            id="near-me-btn"
+          >
+            📍 {nearMe ? 'Near Me ✓' : 'Near Me'}
           </button>
-          {coords && (
-            <select className="input input-sm radius-select" value={radiusKm} onChange={e => setRadiusKm(e.target.value)}>
-              <option value="10">Within 10 km</option>
-              <option value="25">Within 25 km</option>
-              <option value="50">Within 50 km</option>
-              <option value="All">Any Distance</option>
+
+          {nearMe && geo && (
+            <div className="radius-control">
+              <span className="text-sm text-muted">Radius:</span>
+              {RADII.map(r => (
+                <button
+                  key={r}
+                  className={`radius-chip ${radiusKm === r ? 'active' : ''}`}
+                  onClick={() => setRadiusKm(r)}
+                >
+                  {r} km
+                </button>
+              ))}
+            </div>
+          )}
+
+          {!nearMe && (
+            <select
+              className="input input-sm"
+              value={city}
+              onChange={e => setCity(e.target.value)}
+              style={{ minWidth: 180 }}
+            >
+              <option value="">All Cities (Pakistan)</option>
+              {PAKISTAN_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           )}
-          <select className="input input-sm" value={country} onChange={e => { setCountry(e.target.value); setCity(''); }} style={{minWidth: 150}}>
-            <option value="">All Countries</option>
-            {availableCountries.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <select className="input input-sm" value={city} onChange={e => setCity(e.target.value)} style={{minWidth: 150}}>
-            <option value="">All Cities</option>
-            {availableCities.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
+
+          {geoError && <span className="geo-error text-sm">{geoError}</span>}
         </div>
 
-        {/* Lobby Grid */}
+        {/* Grid */}
         {loading && lobbies.length === 0 ? (
           <div className="grid grid-auto gap-4">
-            {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="skeleton skeleton-card" />)}
+            {[1,2,3,4,5,6].map(i => <div key={i} className="skeleton skeleton-card" />)}
           </div>
         ) : lobbies.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon">🏟️</div>
-            <h3>No open lobbies</h3>
-            <p>Be the first to create a game!</p>
-            <Link to="/lobby/create" className="btn btn-primary mt-4">Create Lobby</Link>
+            <div className="empty-state-icon">{emptyMsg.icon}</div>
+            <h3>{emptyMsg.title}</h3>
+            <p>{emptyMsg.sub}</p>
+            {feedTab === 'open' && (
+              <Link to="/lobby/create" className="btn btn-primary mt-4">Create Lobby</Link>
+            )}
           </div>
         ) : (
           <>
@@ -159,7 +217,11 @@ const Feed = () => {
             </div>
             {hasMore && (
               <div className="text-center mt-6">
-                <button className="btn btn-outline" onClick={() => fetchLobbies(nextCursor)} disabled={loading}>
+                <button
+                  className="btn btn-outline"
+                  onClick={() => fetchLobbies(nextCursor)}
+                  disabled={loading}
+                >
                   {loading ? 'Loading...' : 'Load More'}
                 </button>
               </div>
@@ -172,5 +234,3 @@ const Feed = () => {
 };
 
 export default Feed;
-
-

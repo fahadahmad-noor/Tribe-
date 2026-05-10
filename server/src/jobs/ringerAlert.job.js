@@ -1,8 +1,8 @@
-const { Queue, Worker } = require('bullmq');
-const { getRedis } = require('../config/redis');
-const User = require('../models/User');
-const Lobby = require('../models/Lobby');
-const { createNotification } = require('../utils/helpers');
+import { Queue, Worker } from 'bullmq';
+import { getRedis } from '../config/redis.js';
+import User from '../models/User.js';
+import Lobby from '../models/Lobby.js';
+import { createNotification } from '../utils/helpers.js';
 
 const QUEUE_NAME = 'ringer-alert';
 let queue = null;
@@ -12,24 +12,19 @@ const getQueue = () => {
   return queue;
 };
 
-const startWorker = (io) => {
+export const startWorker = (io) => {
   const worker = new Worker(QUEUE_NAME, async (job) => {
     const { lobbyId } = job.data;
     const lobby = await Lobby.findById(lobbyId);
     if (!lobby || lobby.status !== 'OPEN') return;
 
-    // Find nearby users with ringerMode active
+    // Find users with ringerMode + matching sport preference (not already in lobby)
     const ringers = await User.find({
       ringerMode: true,
+      banned: false,
       _id: { $nin: [...lobby.confirmedPlayerIds, lobby.organizerId] },
       preferences: lobby.sport,
-      location: {
-        $nearSphere: {
-          $geometry: lobby.location,
-          $maxDistance: 15000, // 15km radius
-        },
-      },
-    }).limit(20);
+    }).select('_id').limit(30).lean();
 
     for (const ringer of ringers) {
       await createNotification(io, {
@@ -45,16 +40,15 @@ const startWorker = (io) => {
     console.log(`🚨 Ringer alert sent to ${ringers.length} users for lobby ${lobbyId}`);
   }, { connection: getRedis() });
 
-  // If Redis is down, BullMQ emits "error". Without a listener Node treats it as unhandled and crashes.
   worker.on('error', (err) => {
     console.warn('⚠️  Ringer worker error (Redis likely unavailable):', err?.message || err);
   });
   return worker;
 };
 
-const sendRingerAlert = async (lobbyId) => {
+export const sendRingerAlert = async (lobbyId) => {
   const q = getQueue();
   await q.add('ringer-alert', { lobbyId });
 };
 
-module.exports = { startWorker, sendRingerAlert, getQueue };
+export { getQueue };

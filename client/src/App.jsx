@@ -3,8 +3,9 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import { ThemeProvider } from './context/ThemeContext';
 import Layout from './components/layout/Layout';
+import AdminShell from './components/admin/AdminShell';
 
-// Pages
+// Player Pages
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -19,14 +20,21 @@ import VenueDirectory from './pages/VenueDirectory';
 import VenueProfile from './pages/VenueProfile';
 import VenueApply from './pages/VenueApply';
 import VenueDashboard from './pages/VenueDashboard';
-import TournamentDirectory from './pages/TournamentDirectory';
-import TournamentDetail from './pages/TournamentDetail';
 import Challenges from './pages/Challenges';
-import AdminDashboard from './pages/AdminDashboard';
-import NotFound from './pages/NotFound';
 import Messages from './pages/Messages';
+import MatchHistory from './pages/MatchHistory';
+import NotFound from './pages/NotFound';
 
-// Protected route wrapper
+// Admin Pages
+import AdminDashboard from './pages/AdminDashboard';
+import AdminUsers from './pages/AdminUsers';
+import AdminUserDetail from './pages/AdminUserDetail';
+import AdminVenues from './pages/AdminVenues';
+import AdminLobbies from './pages/AdminLobbies';
+import AdminFeed from './pages/AdminFeed';
+import AdminAudit from './pages/AdminAudit';
+
+// ── Route Guards ────────────────────────────────────────────────
 const ProtectedRoute = ({ children, roles }) => {
   const { user, loading } = useAuth();
   if (loading) return <div className="page container"><div className="skeleton skeleton-card mt-6" /></div>;
@@ -35,14 +43,15 @@ const ProtectedRoute = ({ children, roles }) => {
   return children;
 };
 
-// Guest-only route (redirect if logged in)
 const GuestRoute = ({ children }) => {
   const { user, loading } = useAuth();
   if (loading) return null;
-  if (user) return <Navigate to="/feed" replace />;
+  // Admins bypass the guest check and go straight to /admin if they somehow hit a guest page
+  if (user) return <Navigate to={user.roles?.includes('admin') ? '/admin' : '/feed'} replace />;
   return children;
 };
 
+// ── App ─────────────────────────────────────────────────────────
 function App() {
   return (
     <BrowserRouter>
@@ -50,6 +59,24 @@ function App() {
         <AuthProvider>
           <SocketProvider>
             <Routes>
+              {/* ── Admin Shell (separate layout, no player navbar) ── */}
+              <Route
+                element={
+                  <ProtectedRoute roles={['admin']}>
+                    <AdminShell />
+                  </ProtectedRoute>
+                }
+              >
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/users" element={<AdminUsers />} />
+                <Route path="/admin/users/:id" element={<AdminUserDetail />} />
+                <Route path="/admin/venues" element={<AdminVenues />} />
+                <Route path="/admin/lobbies" element={<AdminLobbies />} />
+                <Route path="/admin/feed" element={<AdminFeed />} />
+                <Route path="/admin/audit" element={<AdminAudit />} />
+              </Route>
+
+              {/* ── Player Layout ── */}
               <Route element={<Layout />}>
                 {/* Public */}
                 <Route path="/" element={<Landing />} />
@@ -62,6 +89,8 @@ function App() {
                 <Route path="/lobby/create" element={<ProtectedRoute><LobbyCreate /></ProtectedRoute>} />
                 <Route path="/lobby/:id" element={<ProtectedRoute><LobbyDetail /></ProtectedRoute>} />
                 <Route path="/profile/:id" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                <Route path="/history" element={<ProtectedRoute><MatchHistory /></ProtectedRoute>} />
+                <Route path="/history/:id" element={<ProtectedRoute><MatchHistory /></ProtectedRoute>} />
                 <Route path="/squads" element={<ProtectedRoute><SquadDiscovery /></ProtectedRoute>} />
                 <Route path="/squads/create" element={<ProtectedRoute><SquadCreate /></ProtectedRoute>} />
                 <Route path="/squad/:id" element={<ProtectedRoute><SquadProfile /></ProtectedRoute>} />
@@ -69,12 +98,7 @@ function App() {
                 <Route path="/venues/apply" element={<ProtectedRoute><VenueApply /></ProtectedRoute>} />
                 <Route path="/venue/:id" element={<ProtectedRoute><VenueProfile /></ProtectedRoute>} />
                 <Route path="/venue/dashboard" element={<ProtectedRoute roles={['venue_owner']}><VenueDashboard /></ProtectedRoute>} />
-                <Route path="/tournaments" element={<ProtectedRoute><TournamentDirectory /></ProtectedRoute>} />
-                <Route path="/tournament/:id" element={<ProtectedRoute><TournamentDetail /></ProtectedRoute>} />
                 <Route path="/challenges" element={<ProtectedRoute><Challenges /></ProtectedRoute>} />
-
-                {/* Admin */}
-                <Route path="/admin" element={<ProtectedRoute roles={['admin']}><AdminDashboard /></ProtectedRoute>} />
 
                 {/* 404 */}
                 <Route path="*" element={<NotFound />} />

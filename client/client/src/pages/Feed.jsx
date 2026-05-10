@@ -17,11 +17,26 @@ const Feed = () => {
   const [city, setCity] = useState('');
   const [country, setCountry] = useState('');
   const [radiusKm, setRadiusKm] = useState('25');
+<<<<<<< HEAD
   const [coords, setCoords] = useState(null); // { lng, lat }
   const [locating, setLocating] = useState(false);
+=======
+  const [coords, setCoords] = useState(null);
+  const [locating, setLocating] = useState(false);
+  const [availableCities, setAvailableCities] = useState([]);
+  const [availableCountries, setAvailableCountries] = useState([]);
+>>>>>>> 35b41f489a1fd2de70d754455a262eb1c872b297
 
   const [nextCursor, setNextCursor] = useState(null);
   const [hasMore, setHasMore] = useState(false);
+
+  // Fetch available locations for dropdowns
+  useEffect(() => {
+    api.get('/lobbies/locations').then(res => {
+      setAvailableCities(res.data.cities || []);
+      setAvailableCountries(res.data.countries || []);
+    }).catch(() => {});
+  }, []);
 
   const fetchLobbies = useCallback(async (cursor = null) => {
     try {
@@ -120,8 +135,19 @@ const Feed = () => {
               <option value="All">Any Distance</option>
             </select>
           )}
+<<<<<<< HEAD
           <input type="text" className="input input-sm flex-1" placeholder="City (e.g. Dubai)" value={city} onChange={e => setCity(e.target.value)} />
           <input type="text" className="input input-sm flex-1" placeholder="Country" value={country} onChange={e => setCountry(e.target.value)} />
+=======
+          <select className="input input-sm" value={country} onChange={e => { setCountry(e.target.value); setCity(''); }} style={{minWidth: 150}}>
+            <option value="">All Countries</option>
+            {availableCountries.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select className="input input-sm" value={city} onChange={e => setCity(e.target.value)} style={{minWidth: 150}}>
+            <option value="">All Cities</option>
+            {availableCities.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+>>>>>>> 35b41f489a1fd2de70d754455a262eb1c872b297
         </div>
 
         {/* Lobby Grid */}

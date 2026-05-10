@@ -24,6 +24,10 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    if (!form.whatsappNumber.trim()) {
+      setError('Contact / WhatsApp number is required.');
+      return;
+    }
     setLoading(true);
     try {
       await register(form);
@@ -57,8 +61,9 @@ const Register = () => {
             <input type="password" className="input" id="register-password" placeholder="Min 6 characters" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} required minLength={6} />
           </div>
           <div className="input-group">
-            <label className="input-label">WhatsApp Number (optional)</label>
-            <input type="text" className="input" id="register-whatsapp" placeholder="+971 50 123 4567" value={form.whatsappNumber} onChange={e => setForm({ ...form, whatsappNumber: e.target.value })} />
+            <label className="input-label">Contact / WhatsApp Number <span style={{color:'var(--color-error)'}}>*</span></label>
+            <input type="tel" className="input" id="register-whatsapp" placeholder="e.g. 03001234567" value={form.whatsappNumber} onChange={e => setForm({ ...form, whatsappNumber: e.target.value })} required minLength={7} />
+            <span className="text-xs text-muted">Required — so organizers can contact you</span>
           </div>
           <div className="input-group">
             <label className="input-label">Favourite Sports</label>
