@@ -4,7 +4,7 @@ import api from '../api/axios';
 import '../styles/pages/SquadCreate.css';
 
 const SPORTS = ['Football', 'Cricket', 'Basketball', 'Tennis', 'Padel', 'Volleyball', 'Badminton', 'Pickleball', 'TableTennis'];
-const sportEmoji = { Football: '⚽', Cricket: '🏏', Basketball: '🏀', Tennis: '🎾', Padel: '🏓', Volleyball: '🏐', Badminton: '🏸', Pickleball: '🥒', TableTennis: '🏓' };
+const sportEmoji = { Football: '⚽', Cricket: '🏏', Basketball: '🏀', Tennis: '🎾', Padel: '🏓', Volleyball: '🏐', Badminton: '🏸', Pickleball: '🏓', TableTennis: '🏓' };
 
 const SquadCreate = () => {
   const navigate = useNavigate();

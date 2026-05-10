@@ -39,7 +39,10 @@ const ProtectedRoute = ({ children, roles }) => {
   const { user, loading } = useAuth();
   if (loading) return <div className="page container"><div className="skeleton skeleton-card mt-6" /></div>;
   if (!user) return <Navigate to="/login" replace />;
-  if (roles && !roles.some(r => user.roles?.includes(r))) return <Navigate to="/feed" replace />;
+  // If role check fails: admins stay in admin area, others go to feed
+  if (roles && !roles.some(r => user.roles?.includes(r))) {
+    return <Navigate to={user.roles?.includes('admin') ? '/admin' : '/feed'} replace />;
+  }
   return children;
 };
 

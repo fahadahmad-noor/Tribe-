@@ -30,5 +30,7 @@ const venueSchema = new mongoose.Schema(
 );
 
 venueSchema.index({ location: '2dsphere' });
+venueSchema.index({ verificationStatus: 1, createdAt: -1 }); // admin queue
+venueSchema.index({ name: 1 });                               // admin search
 
 export default mongoose.model('Venue', venueSchema);

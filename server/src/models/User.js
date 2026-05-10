@@ -9,7 +9,7 @@ const userSchema = new mongoose.Schema(
     preferences: [{ type: String }],
     ringerMode: { type: Boolean, default: false },
     avatarUrl: { type: String, default: '' },
-    roles: [{ type: String }],
+    roles: [{ type: String, enum: ['player', 'admin', 'venue_owner'] }],
     banned: { type: Boolean, default: false },
     // Enhanced profile fields
     bio: { type: String, default: '', maxlength: 300 },

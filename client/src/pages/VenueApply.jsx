@@ -17,7 +17,7 @@ const VenueApply = () => {
     name: '',
     address: '',
     coordinates: [0, 0],
-    city: '',
+    city: PAKISTAN_CITIES[0] || 'Islamabad',
     country: 'Pakistan',
     sportsSupported: [],
     amenities: [],
@@ -137,7 +137,6 @@ const VenueApply = () => {
                     onChange={e => setForm({ ...form, city: e.target.value })}
                     required
                   >
-                    <option value="">Select a city...</option>
                     {PAKISTAN_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>

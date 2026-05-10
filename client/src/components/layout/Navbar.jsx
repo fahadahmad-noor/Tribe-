@@ -26,7 +26,7 @@ const Navbar = () => {
           <span className="logo-text">TRIBE</span>
         </Link>
 
-        {user && (
+          {user && !user.roles?.includes('admin') && (
           <div className="navbar-links hide-mobile">
             <Link to="/feed" className="nav-link">Feed</Link>
             <Link to="/messages" className="nav-link">Messages</Link>
@@ -34,7 +34,7 @@ const Navbar = () => {
             <Link to="/venues" className="nav-link">Venues</Link>
             <Link to="/challenges" className="nav-link">Challenges</Link>
           </div>
-        )}
+          )}
 
         <div className="navbar-actions">
           <button onClick={toggleTheme} className="btn btn-icon theme-toggle" title="Toggle theme" id="theme-toggle">
@@ -45,35 +45,46 @@ const Navbar = () => {
 
           {user ? (
             <>
-              <NotificationDropdown />
-              {user.roles?.includes('admin') && (
-                <Link to="/admin" className="btn btn-outline btn-sm hide-mobile" id="admin-panel-btn" style={{ borderColor: 'var(--accent-primary)', color: 'var(--accent-primary)' }}>
-                  🛡️ Admin
-                </Link>
-              )}
-              <Link to="/lobby/create" className="btn btn-primary btn-sm hide-mobile" id="create-lobby-btn">
-                + Create Lobby
-              </Link>
-              <div className="navbar-profile" onClick={() => setMenuOpen(!menuOpen)}>
-                {user.avatarUrl ? (
-                  <img src={user.avatarUrl} alt={user.name} className="avatar avatar-sm" />
-                ) : (
-                  <div className="avatar avatar-sm avatar-placeholder">{user.name?.[0]?.toUpperCase()}</div>
-                )}
-                {menuOpen && (
-                  <div className="profile-dropdown" id="profile-dropdown">
-                    <Link to="/profile/me" className="dropdown-item" onClick={() => setMenuOpen(false)}>Profile</Link>
-                    {user.roles?.includes('venue_owner') && (
-                      <Link to="/venue/dashboard" className="dropdown-item" onClick={() => setMenuOpen(false)}>Venue Dashboard</Link>
+              {/* Admin: show only admin panel link + logout */}
+              {user.roles?.includes('admin') ? (
+                <>
+                  <Link
+                    to="/admin"
+                    className="btn btn-outline btn-sm"
+                    id="admin-panel-btn"
+                    style={{ borderColor: 'var(--accent-primary)', color: 'var(--accent-primary)' }}
+                  >
+                    🛡️ Admin Panel
+                  </Link>
+                  <button className="btn btn-ghost btn-sm" onClick={handleLogout}>
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <NotificationDropdown />
+                  <Link to="/lobby/create" className="btn btn-primary btn-sm hide-mobile" id="create-lobby-btn">
+                    + Create Lobby
+                  </Link>
+                  <div className="navbar-profile" onClick={() => setMenuOpen(!menuOpen)}>
+                    {user.avatarUrl ? (
+                      <img src={user.avatarUrl} alt={user.name} className="avatar avatar-sm" />
+                    ) : (
+                      <div className="avatar avatar-sm avatar-placeholder">{user.name?.[0]?.toUpperCase()}</div>
                     )}
-                    {user.roles?.includes('admin') && (
-                      <Link to="/admin" className="dropdown-item" onClick={() => setMenuOpen(false)}>Admin Panel</Link>
+                    {menuOpen && (
+                      <div className="profile-dropdown" id="profile-dropdown">
+                        <Link to="/profile/me" className="dropdown-item" onClick={() => setMenuOpen(false)}>Profile</Link>
+                        {user.roles?.includes('venue_owner') && (
+                          <Link to="/venue/dashboard" className="dropdown-item" onClick={() => setMenuOpen(false)}>Venue Dashboard</Link>
+                        )}
+                        <hr className="dropdown-divider" />
+                        <button className="dropdown-item" onClick={handleLogout}>Logout</button>
+                      </div>
                     )}
-                    <hr className="dropdown-divider" />
-                    <button className="dropdown-item" onClick={handleLogout}>Logout</button>
                   </div>
-                )}
-              </div>
+                </>
+              )}
             </>
           ) : (
             <div className="flex gap-2">

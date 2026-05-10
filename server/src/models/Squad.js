@@ -18,3 +18,8 @@ const squadSchema = new mongoose.Schema(
 );
 
 export default mongoose.model('Squad', squadSchema);
+
+// Missing indexes added — roster and captain queries were doing full scans
+squadSchema.index({ captainId: 1 });
+squadSchema.index({ sport: 1 });
+squadSchema.index({ roster: 1 }); // "squads I'm in" query

@@ -17,7 +17,7 @@ const Feed = () => {
   const [sportFilter, setSportFilter] = useState('All');
 
   // Location state
-  const [city, setCity]         = useState('');
+  const [city, setCity]         = useState('Islamabad');
   const [nearMe, setNearMe]     = useState(false);
   const [geo, setGeo]           = useState(null);        // { lat, lng }
   const [radiusKm, setRadiusKm] = useState(10);
@@ -188,7 +188,6 @@ const Feed = () => {
               onChange={e => setCity(e.target.value)}
               style={{ minWidth: 180 }}
             >
-              <option value="">All Cities (Pakistan)</option>
               {PAKISTAN_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           )}

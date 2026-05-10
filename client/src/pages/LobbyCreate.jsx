@@ -19,7 +19,7 @@ const sportConfig = {
   TableTennis: { type: 'fixed-set', allowed: [1, 2], labels: { 1: 'Singles', 2: 'Doubles' } },
 };
 
-const sportEmoji = { Football: '⚽', Cricket: '🏏', Basketball: '🏀', Tennis: '🎾', Padel: '🏓', Volleyball: '🏐', Badminton: '🏸', Pickleball: '🥒', TableTennis: '🏓' };
+const sportEmoji = { Football: '⚽', Cricket: '🏏', Basketball: '🏀', Tennis: '🎾', Padel: '🏓', Volleyball: '🏐', Badminton: '🏸', Pickleball: '🏓', TableTennis: '🏓' };
 
 const LobbyCreate = () => {
   const navigate = useNavigate();
@@ -32,7 +32,7 @@ const LobbyCreate = () => {
     dateTime: '',
     address: '',
     coordinates: [0, 0],
-    city: '',
+    city: PAKISTAN_CITIES[0] || 'Islamabad',
     country: 'Pakistan',
     totalSlots: 1,
     description: '',
@@ -171,7 +171,6 @@ const LobbyCreate = () => {
                     onChange={e => setForm({ ...form, city: e.target.value })}
                     required
                   >
-                    <option value="">Select a city...</option>
                     {PAKISTAN_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>

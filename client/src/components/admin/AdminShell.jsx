@@ -1,4 +1,4 @@
-import { NavLink, Link, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import '../../styles/admin.css';
 
@@ -26,11 +26,11 @@ const AdminShell = () => {
       <aside className="admin-sidebar">
         {/* Logo */}
         <div className="admin-sidebar-header">
-          <Link to="/admin" className="admin-logo">
+          <NavLink to="/admin" className="admin-logo">
             <span className="admin-logo-icon">⚡</span>
             <span className="admin-logo-text">TRIBE</span>
             <span className="admin-logo-badge">ADMIN</span>
-          </Link>
+          </NavLink>
         </div>
 
         {/* Nav links */}
@@ -52,23 +52,24 @@ const AdminShell = () => {
 
         {/* Footer */}
         <div className="admin-sidebar-footer">
-          <Link to="/feed" className="admin-back-link">
-            <span>←</span>
-            <span>Back to App</span>
-          </Link>
-          <div className="admin-nav-divider" />
           <div className="admin-user-info">
             <div className="admin-user-avatar">
               {user?.name?.[0]?.toUpperCase() || 'A'}
             </div>
-            <span className="admin-user-email">{user?.email}</span>
+            <div style={{ overflow: 'hidden' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {user?.name}
+              </div>
+              <span className="admin-user-email">{user?.email}</span>
+            </div>
           </div>
+          <div className="admin-nav-divider" />
           <button
             className="btn btn-ghost btn-sm w-full"
-            style={{ justifyContent: 'flex-start', fontSize: 13 }}
+            style={{ justifyContent: 'flex-start', fontSize: 13, color: 'var(--text-secondary)' }}
             onClick={handleLogout}
           >
-            Logout
+            ← Logout
           </button>
         </div>
       </aside>

@@ -74,12 +74,12 @@ const Messages = () => {
 
   // ── Initial URL param ──────────────────────────────────────────
   useEffect(() => {
-    if (initialUserId && !activeUser) {
+    if (initialUserId && (!activeUser || activeUser.name === 'Loading…')) {
       const conv = conversations.find(c => c.user._id === initialUserId);
       if (conv) setActiveUser(conv.user);
-      else setActiveUser({ _id: initialUserId, name: 'Loading…' });
+      else if (!activeUser) setActiveUser({ _id: initialUserId, name: 'Loading…' });
     }
-  }, [initialUserId, conversations]);
+  }, [initialUserId, conversations, activeUser]);
 
   // ── Scroll ─────────────────────────────────────────────────────
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);

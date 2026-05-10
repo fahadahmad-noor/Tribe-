@@ -40,7 +40,7 @@ const Register = () => {
   };
 
   return (
-    <div className="auth-page page" id="register-page">
+    <div className="auth-page register-layout" id="register-page">
       <div className="auth-container">
         <div className="auth-header">
           <h1>Join TRIBE</h1>
@@ -49,20 +49,20 @@ const Register = () => {
         {error && <div className="auth-error">{error}</div>}
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="input-group">
-            <label className="input-label">Name</label>
-            <input type="text" className="input" id="register-name" placeholder="Your name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
+            <label className="input-label" htmlFor="register-name">Name</label>
+            <input type="text" className="input auth-input" id="register-name" placeholder="Your name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
           </div>
           <div className="input-group">
-            <label className="input-label">Email</label>
-            <input type="email" className="input" id="register-email" placeholder="you@example.com" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required />
+            <label className="input-label" htmlFor="register-email">Email</label>
+            <input type="email" className="input auth-input" id="register-email" placeholder="you@example.com" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required />
           </div>
           <div className="input-group">
-            <label className="input-label">Password</label>
-            <input type="password" className="input" id="register-password" placeholder="Min 6 characters" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} required minLength={6} />
+            <label className="input-label" htmlFor="register-password">Password</label>
+            <input type="password" className="input auth-input" id="register-password" placeholder="Min 6 characters" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} required minLength={6} />
           </div>
           <div className="input-group">
-            <label className="input-label">Contact / WhatsApp Number <span style={{color:'var(--color-error)'}}>*</span></label>
-            <input type="tel" className="input" id="register-whatsapp" placeholder="e.g. 03001234567" value={form.whatsappNumber} onChange={e => setForm({ ...form, whatsappNumber: e.target.value })} required minLength={7} />
+            <label className="input-label" htmlFor="register-whatsapp">Contact / WhatsApp Number <span style={{color:'#DC3545'}}>*</span></label>
+            <input type="tel" className="input auth-input" id="register-whatsapp" placeholder="e.g. 03001234567" value={form.whatsappNumber} onChange={e => setForm({ ...form, whatsappNumber: e.target.value })} required minLength={7} />
             <span className="text-xs text-muted">Required — so organizers can contact you</span>
           </div>
           <div className="input-group">
@@ -75,8 +75,8 @@ const Register = () => {
               ))}
             </div>
           </div>
-          <button type="submit" className="btn btn-primary w-full btn-lg" id="register-submit" disabled={loading}>
-            {loading ? 'Creating account...' : 'Create Account'}
+          <button type="submit" className="btn btn-primary auth-submit btn-lg" id="register-submit" disabled={loading}>
+            {loading ? <span className="auth-spinner" /> : 'Create Account →'}
           </button>
         </form>
         <p className="auth-footer">Already have an account? <Link to="/login">Log in</Link></p>
