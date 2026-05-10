@@ -1,0 +1,313 @@
+/* Admin Dashboard Styles */
+.admin-dashboard-page {
+  background: var(--bg-secondary);
+}
+
+.admin-header {
+  margin-bottom: var(--space-8);
+}
+
+.admin-header h1 {
+  margin-bottom: var(--space-2);
+}
+
+/* Tabs */
+.admin-tabs {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-8);
+  border-bottom: 2px solid var(--border-default);
+  overflow-x: auto;
+}
+
+.admin-tab {
+  padding: var(--space-3) var(--space-4);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  transition: all var(--transition-default);
+  white-space: nowrap;
+}
+
+.admin-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+}
+
+.admin-tab.active {
+  color: var(--accent-primary);
+  border-bottom-color: var(--accent-primary);
+}
+
+/* Content */
+.admin-content {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Metrics Grid */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+}
+
+.metric-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  text-align: center;
+  transition: all var(--transition-default);
+}
+
+.metric-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+
+.metric-icon {
+  font-size: 48px;
+  margin-bottom: var(--space-3);
+}
+
+.metric-value {
+  font-family: var(--font-heading);
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.metric-label {
+  font-size: 14px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Filters */
+.admin-filters {
+  display: flex;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.admin-filters .input,
+.admin-filters .select {
+  flex: 1;
+  min-width: 200px;
+}
+
+/* Table Info */
+.admin-table-info {
+  margin-bottom: var(--space-4);
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* Table */
+.admin-table {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.admin-table-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: var(--space-4);
+  align-items: center;
+  padding: var(--space-4);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-default);
+}
+
+.admin-table-row:hover {
+  box-shadow: var(--shadow-sm);
+  border-color: var(--accent-primary);
+}
+
+.admin-table-cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* User Info */
+.user-info {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.user-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.user-email {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.user-roles {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* Admin Actions */
+.admin-actions {
+  flex-direction: row;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* Pending Section */
+.pending-section {
+  margin-bottom: var(--space-8);
+  padding-bottom: var(--space-8);
+  border-bottom: 2px solid var(--border-default);
+}
+
+.pending-section h3 {
+  margin-bottom: var(--space-4);
+  color: var(--accent-amber);
+}
+
+.pending-venues {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-4);
+}
+
+.pending-venue-card {
+  border-left: 4px solid var(--accent-amber);
+}
+
+.pending-venue-card h4 {
+  margin-bottom: var(--space-2);
+}
+
+.venue-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+/* Venue Details */
+.venue-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.venue-address {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Lobby Details */
+.lobby-sport {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Audit Logs */
+.audit-logs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.audit-log-item {
+  border-left: 4px solid var(--accent-primary);
+}
+
+.audit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-3);
+}
+
+.audit-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.audit-details p {
+  margin: 0;
+}
+
+/* Pagination */
+.admin-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--border-default);
+}
+
+.pagination-info {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .admin-table-row {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+
+  .admin-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .admin-filters {
+    flex-direction: column;
+  }
+
+  .admin-filters .input,
+  .admin-filters .select {
+    width: 100%;
+  }
+
+  .pending-venues {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-content {
+    padding: var(--space-4);
+  }
+}

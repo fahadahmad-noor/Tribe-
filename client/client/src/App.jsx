@@ -19,8 +19,6 @@ import VenueDirectory from './pages/VenueDirectory';
 import VenueProfile from './pages/VenueProfile';
 import VenueApply from './pages/VenueApply';
 import VenueDashboard from './pages/VenueDashboard';
-import TournamentDirectory from './pages/TournamentDirectory';
-import TournamentDetail from './pages/TournamentDetail';
 import Challenges from './pages/Challenges';
 import AdminDashboard from './pages/AdminDashboard';
 import NotFound from './pages/NotFound';
@@ -69,8 +67,6 @@ function App() {
                 <Route path="/venues/apply" element={<ProtectedRoute><VenueApply /></ProtectedRoute>} />
                 <Route path="/venue/:id" element={<ProtectedRoute><VenueProfile /></ProtectedRoute>} />
                 <Route path="/venue/dashboard" element={<ProtectedRoute roles={['venue_owner']}><VenueDashboard /></ProtectedRoute>} />
-                <Route path="/tournaments" element={<ProtectedRoute><TournamentDirectory /></ProtectedRoute>} />
-                <Route path="/tournament/:id" element={<ProtectedRoute><TournamentDetail /></ProtectedRoute>} />
                 <Route path="/challenges" element={<ProtectedRoute><Challenges /></ProtectedRoute>} />
 
                 {/* Admin */}
